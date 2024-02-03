@@ -75,7 +75,13 @@ void VideoReadAndDecode::create(ReaderConfig reader_config, DecoderConfig decode
     _actual_decoded_width.resize(_batch_size);
     _actual_decoded_height.resize(_batch_size);
     _video_decoder_config = decoder_config;
-
+    _random_crop_dec_param = nullptr;
+    
+    auto random_aspect_ratio = decoder_config.get_random_aspect_ratio();
+    auto random_area = decoder_config.get_random_area();
+    AspectRatioRange aspect_ratio_range = std::make_pair((float)random_aspect_ratio[0], (float)random_aspect_ratio[1]);
+    AreaRange area_range = std::make_pair((float)random_area[0], (float)random_area[1]);
+    _random_crop_dec_param = new RocalRandomCropDecParam(aspect_ratio_range, area_range, (int64_t)decoder_config.get_seed(), decoder_config.get_num_attempts(), _batch_size);
     // Initialize the ffmpeg context once for the video files.
     size_t i = 0;
     for (; i < _video_process_count; i++) {
@@ -121,6 +127,9 @@ float VideoReadAndDecode::convert_framenum_to_timestamp(size_t frame_number) {
 }
 
 void VideoReadAndDecode::decode_sequence(size_t sequence_index) {
+    Shape dec_shape = {_max_decoded_height, _max_decoded_width};
+    auto crop_window = _random_crop_dec_param->generate_crop_window(dec_shape, sequence_index);
+    _video_decoder[_sequence_video_idx[sequence_index]]->set_crop_window(crop_window);
     if (_video_decoder[_sequence_video_idx[sequence_index]]->Decode(_decompressed_buff_ptrs[sequence_index], _sequence_start_frame_num[sequence_index], _sequence_length, _stride,
                                                                     _max_decoded_width, _max_decoded_height, _max_decoded_stride, _out_pix_fmt) == VideoDecoder::Status::OK) {
         _actual_decoded_width[sequence_index] = _max_decoded_width;
@@ -213,6 +222,8 @@ VideoReadAndDecode::load(unsigned char *buff,
         sequential_decode_sequences.push_back(parallel_decode_sequences.back());
         parallel_decode_sequences.clear();
     }
+    if (_random_crop_dec_param)
+        _random_crop_dec_param->generate_random_seeds();
 
     _file_load_time.end();  // Debug timing
 

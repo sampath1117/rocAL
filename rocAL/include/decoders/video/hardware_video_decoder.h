@@ -47,5 +47,7 @@ class HardWareVideoDecoder : public VideoDecoder {
     AVHWDeviceType *hwDeviceType;
     AVBufferRef *hw_device_ctx = NULL;
     int hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type, AVBufferRef *hw_device_ctx);
+    void set_crop_window(CropWindow &crop_window) override { _crop_window = crop_window; }
+    CropWindow _crop_window;
 };
 #endif

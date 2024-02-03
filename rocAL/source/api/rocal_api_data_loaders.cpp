@@ -1552,12 +1552,18 @@ rocalVideoFileSource(
     unsigned stride,
     bool file_list_frame_num,
     bool pad_sequences,
-    bool normalized) {
+    bool normalized,
+    unsigned dest_width,
+    unsigned dest_height,
+    unsigned num_attempts,
+    std::vector<float> crop_scale_range,
+    std::vector<float> aspect_ratio_range) {
     Tensor* output = nullptr;
     if (p_context == nullptr) {
         ERR("Invalid ROCAL context or invalid input image")
         return output;
     }
+    std::cout << "entering rocalVideoFileSource" << std::endl;
     auto context = static_cast<Context*>(p_context);
     try {
 #ifdef ROCAL_VIDEO
@@ -1575,8 +1581,13 @@ rocalVideoFileSource(
             decoder_type = DecoderType::FFMPEG_HARDWARE_DECODE;
         else
             decoder_type = DecoderType::FFMPEG_SOFTWARE_DECODE;
+        
+        if(dest_height == 0)
+            dest_height = video_prop.height;
+        if(dest_width == 0)
+            dest_width = video_prop.width;
         auto [color_format, tensor_layout, dims, num_of_planes] = convert_color_format_sequence(rocal_color_format, context->user_batch_size(),
-                                                                                                video_prop.height, video_prop.width, sequence_length);
+                                                                                                dest_height, dest_width, sequence_length);
         auto decoder_mode = convert_decoder_mode(rocal_decode_device);
         auto info = TensorInfo(std::move(dims),
                                context->master_graph->mem_type(),
@@ -1586,7 +1597,8 @@ rocalVideoFileSource(
 
         output = context->master_graph->create_loader_output_tensor(info);
 
-        context->master_graph->add_node<VideoLoaderNode>({}, {output})->init(internal_shard_count, source_path, StorageType::VIDEO_FILE_SYSTEM, decoder_type, decoder_mode, sequence_length, step, stride, video_prop, shuffle, loop, context->user_batch_size(), context->master_graph->mem_type(), pad_sequences);
+        context->master_graph->add_node<VideoLoaderNode>({}, {output})->init(internal_shard_count, source_path, StorageType::VIDEO_FILE_SYSTEM, decoder_type, decoder_mode, sequence_length, step, stride, video_prop, shuffle, loop, context->user_batch_size(), context->master_graph->mem_type(), pad_sequences,
+                                                                            num_attempts, crop_scale_range, aspect_ratio_range);
         context->master_graph->set_loop(loop);
 
         if (normalized) {
@@ -1735,301 +1747,301 @@ rocalVideoFileResize(
         return resize_output;
     }
 
-    auto context = static_cast<Context*>(p_context);
-    try {
-#ifdef ROCAL_VIDEO
-        if (sequence_length == 0)
-            THROW("Sequence length passed should be bigger than 0")
+//     auto context = static_cast<Context*>(p_context);
+//     try {
+// #ifdef ROCAL_VIDEO
+//         if (sequence_length == 0)
+//             THROW("Sequence length passed should be bigger than 0")
 
-        // Set default step and stride values if 0 is passed
-        step = (step == 0) ? sequence_length : step;
-        stride = (stride == 0) ? 1 : stride;
+//         // Set default step and stride values if 0 is passed
+//         step = (step == 0) ? sequence_length : step;
+//         stride = (stride == 0) ? 1 : stride;
 
-        VideoProperties video_prop;
-        DecoderType decoder_type;
-        find_video_properties(video_prop, source_path, file_list_frame_num);
-        if (rocal_decode_device == RocalDecodeDevice::ROCAL_HW_DECODE)
-            decoder_type = DecoderType::FFMPEG_HARDWARE_DECODE;
-        else
-            decoder_type = DecoderType::FFMPEG_SOFTWARE_DECODE;
-        auto [color_format, tensor_layout, dims, num_of_planes] = convert_color_format_sequence(rocal_color_format, context->user_batch_size(),
-                                                                                                video_prop.height, video_prop.width, sequence_length);
-        auto decoder_mode = convert_decoder_mode(rocal_decode_device);
-        auto info = TensorInfo(std::move(dims),
-                               context->master_graph->mem_type(),
-                               RocalTensorDataType::UINT8,
-                               tensor_layout,
-                               color_format);
+//         VideoProperties video_prop;
+//         DecoderType decoder_type;
+//         find_video_properties(video_prop, source_path, file_list_frame_num);
+//         if (rocal_decode_device == RocalDecodeDevice::ROCAL_HW_DECODE)
+//             decoder_type = DecoderType::FFMPEG_HARDWARE_DECODE;
+//         else
+//             decoder_type = DecoderType::FFMPEG_SOFTWARE_DECODE;
+//         auto [color_format, tensor_layout, dims, num_of_planes] = convert_color_format_sequence(rocal_color_format, context->user_batch_size(),
+//                                                                                                 video_prop.height, video_prop.width, sequence_length);
+//         auto decoder_mode = convert_decoder_mode(rocal_decode_device);
+//         auto info = TensorInfo(std::move(dims),
+//                                context->master_graph->mem_type(),
+//                                RocalTensorDataType::UINT8,
+//                                tensor_layout,
+//                                color_format);
 
-        Tensor* output = context->master_graph->create_loader_output_tensor(info);
-        context->master_graph->add_node<VideoLoaderNode>({}, {output})->init(internal_shard_count, source_path, StorageType::VIDEO_FILE_SYSTEM, decoder_type, decoder_mode, sequence_length, step, stride, video_prop, shuffle, loop, context->user_batch_size(), context->master_graph->mem_type(), pad_sequences);
-        context->master_graph->set_loop(loop);
+//         Tensor* output = context->master_graph->create_loader_output_tensor(info);
+//         context->master_graph->add_node<VideoLoaderNode>({}, {output})->init(internal_shard_count, source_path, StorageType::VIDEO_FILE_SYSTEM, decoder_type, decoder_mode, sequence_length, step, stride, video_prop, shuffle, loop, context->user_batch_size(), context->master_graph->mem_type(), pad_sequences);
+//         context->master_graph->set_loop(loop);
 
-        if (dest_width != video_prop.width && dest_height != video_prop.height) {
-            if ((dest_width | dest_height | resize_longer | resize_shorter) == 0)
-                THROW("Atleast one size 'dest_width' or 'dest_height' or 'resize_shorter' or 'resize_longer' must be specified")
-            if ((dest_width | dest_height) && (resize_longer | resize_shorter))
-                THROW("Only one method of specifying size can be used \ndest_width and/or dest_height\nresize_shorter\nresize_longer")
-            if (resize_longer && resize_shorter)
-                THROW("'resize_longer' and 'resize_shorter' cannot be passed together. They are mutually exclusive.")
+//         if (dest_width != video_prop.width && dest_height != video_prop.height) {
+//             if ((dest_width | dest_height | resize_longer | resize_shorter) == 0)
+//                 THROW("Atleast one size 'dest_width' or 'dest_height' or 'resize_shorter' or 'resize_longer' must be specified")
+//             if ((dest_width | dest_height) && (resize_longer | resize_shorter))
+//                 THROW("Only one method of specifying size can be used \ndest_width and/or dest_height\nresize_shorter\nresize_longer")
+//             if (resize_longer && resize_shorter)
+//                 THROW("'resize_longer' and 'resize_shorter' cannot be passed together. They are mutually exclusive.")
 
-            unsigned out_width, out_height;
-            RocalResizeScalingMode resize_scaling_mode;
+//             unsigned out_width, out_height;
+//             RocalResizeScalingMode resize_scaling_mode;
 
-            // Change the scaling mode if resize_shorter or resize_longer is specified
-            if (resize_shorter) {
-                resize_scaling_mode = RocalResizeScalingMode::ROCAL_SCALING_MODE_NOT_SMALLER;
-                out_width = out_height = resize_shorter;
-            } else if (resize_longer) {
-                resize_scaling_mode = RocalResizeScalingMode::ROCAL_SCALING_MODE_NOT_LARGER;
-                out_width = out_height = resize_longer;
-            } else {
-                resize_scaling_mode = scaling_mode;
-                out_width = dest_width;
-                out_height = dest_height;
-            }
+//             // Change the scaling mode if resize_shorter or resize_longer is specified
+//             if (resize_shorter) {
+//                 resize_scaling_mode = RocalResizeScalingMode::ROCAL_SCALING_MODE_NOT_SMALLER;
+//                 out_width = out_height = resize_shorter;
+//             } else if (resize_longer) {
+//                 resize_scaling_mode = RocalResizeScalingMode::ROCAL_SCALING_MODE_NOT_LARGER;
+//                 out_width = out_height = resize_longer;
+//             } else {
+//                 resize_scaling_mode = scaling_mode;
+//                 out_width = dest_width;
+//                 out_height = dest_height;
+//             }
 
-            std::vector<unsigned> maximum_size;
-            if (max_size.size()) {
-                if (max_size.size() == 1) {
-                    maximum_size = {max_size[0], max_size[0]};
-                } else if (max_size.size() == 2) {
-                    maximum_size = {max_size[0], max_size[1]};  // {width, height}
-                } else {
-                    THROW("The length of max_size vector exceeds the image dimension.")
-                }
-            }
+//             std::vector<unsigned> maximum_size;
+//             if (max_size.size()) {
+//                 if (max_size.size() == 1) {
+//                     maximum_size = {max_size[0], max_size[0]};
+//                 } else if (max_size.size() == 2) {
+//                     maximum_size = {max_size[0], max_size[1]};  // {width, height}
+//                 } else {
+//                     THROW("The length of max_size vector exceeds the image dimension.")
+//                 }
+//             }
 
-            // Determine the max width and height to be set to the output info
-            unsigned max_out_width, max_out_height;
-            if (maximum_size.size() && maximum_size[0] != 0 && maximum_size[1] != 0) {
-                // If max_size is passed by the user, the resized images cannot exceed the max size,
-                max_out_width = maximum_size[0];
-                max_out_height = maximum_size[1];
-            } else {
-                // compute the output info width and height wrt the scaling modes and roi passed
-                if (resize_scaling_mode == ROCAL_SCALING_MODE_STRETCH) {
-                    max_out_width = out_width ? out_width : info.max_shape()[0];
-                    max_out_height = out_height ? out_height : info.max_shape()[1];
-                } else if (resize_scaling_mode == ROCAL_SCALING_MODE_NOT_SMALLER) {
-                    max_out_width = (out_width ? out_width : out_height) * MAX_ASPECT_RATIO;
-                    max_out_height = (out_height ? out_height : out_width) * MAX_ASPECT_RATIO;
-                } else {
-                    max_out_width = out_width ? out_width : out_height * MAX_ASPECT_RATIO;
-                    max_out_height = out_height ? out_height : out_width * MAX_ASPECT_RATIO;
-                }
-                if (maximum_size.size() == 2) {
-                    max_out_width = maximum_size[0] ? maximum_size[0] : max_out_width;
-                    max_out_height = maximum_size[1] ? maximum_size[1] : max_out_height;
-                }
-            }
+//             // Determine the max width and height to be set to the output info
+//             unsigned max_out_width, max_out_height;
+//             if (maximum_size.size() && maximum_size[0] != 0 && maximum_size[1] != 0) {
+//                 // If max_size is passed by the user, the resized images cannot exceed the max size,
+//                 max_out_width = maximum_size[0];
+//                 max_out_height = maximum_size[1];
+//             } else {
+//                 // compute the output info width and height wrt the scaling modes and roi passed
+//                 if (resize_scaling_mode == ROCAL_SCALING_MODE_STRETCH) {
+//                     max_out_width = out_width ? out_width : info.max_shape()[0];
+//                     max_out_height = out_height ? out_height : info.max_shape()[1];
+//                 } else if (resize_scaling_mode == ROCAL_SCALING_MODE_NOT_SMALLER) {
+//                     max_out_width = (out_width ? out_width : out_height) * MAX_ASPECT_RATIO;
+//                     max_out_height = (out_height ? out_height : out_width) * MAX_ASPECT_RATIO;
+//                 } else {
+//                     max_out_width = out_width ? out_width : out_height * MAX_ASPECT_RATIO;
+//                     max_out_height = out_height ? out_height : out_width * MAX_ASPECT_RATIO;
+//                 }
+//                 if (maximum_size.size() == 2) {
+//                     max_out_width = maximum_size[0] ? maximum_size[0] : max_out_width;
+//                     max_out_height = maximum_size[1] ? maximum_size[1] : max_out_height;
+//                 }
+//             }
 
-            // set the width and height in the output info
-            // For the resize node, user can create an image with a different width and height
-            TensorInfo output_info = info;
-            std::vector<size_t> out_dims = {context->user_batch_size(), sequence_length, max_out_height,
-                                            max_out_width, static_cast<unsigned>(num_of_planes)};
-            output_info.set_dims(out_dims);
+//             // set the width and height in the output info
+//             // For the resize node, user can create an image with a different width and height
+//             TensorInfo output_info = info;
+//             std::vector<size_t> out_dims = {context->user_batch_size(), sequence_length, max_out_height,
+//                                             max_out_width, static_cast<unsigned>(num_of_planes)};
+//             output_info.set_dims(out_dims);
 
-            resize_output = context->master_graph->create_tensor(output_info, false);
+//             resize_output = context->master_graph->create_tensor(output_info, false);
 
-            // For the nodes that user provides the output size the dimension of all the images after this node will be fixed and equal to that size
-            resize_output->reset_tensor_roi();
+//             // For the nodes that user provides the output size the dimension of all the images after this node will be fixed and equal to that size
+//             resize_output->reset_tensor_roi();
 
-            std::shared_ptr<ResizeNode> resize_node = context->master_graph->add_node<ResizeNode>({output}, {resize_output});
-            resize_node->init(out_width, out_height, resize_scaling_mode, maximum_size, interpolation_type);
-            output = resize_output;
-            info = output_info;
-        }
-        if (normalized) {
-            TensorInfo output_info = info;
-            auto normalized_output = context->master_graph->create_tensor(output_info, false);
-            auto mirror = static_cast<IntParam*>(rocalCreateIntParameter(0));
-            std::vector<float> mean = {0, 0, 0};
-            std::vector<float> std_dev = {255, 255, 255};
-            std::shared_ptr<CropMirrorNormalizeNode> normalize_node = context->master_graph->add_node<CropMirrorNormalizeNode>({output}, {normalized_output});
-            normalize_node->init(output_info.max_shape()[1], output_info.max_shape()[0], 0, 0, mean, std_dev, mirror);
-            output = normalized_output;
-            info = output_info;
-        }
-        if (is_output) {
-            auto actual_output = context->master_graph->create_tensor(info, is_output);
-            context->master_graph->add_node<CopyNode>({output}, {actual_output});
-        }
-#else
-        THROW("Video decoder is not enabled since ffmpeg is not present")
-#endif
-    } catch (const std::exception& e) {
-        context->capture_error(e.what());
-        std::cerr << e.what() << '\n';
-    }
+//             std::shared_ptr<ResizeNode> resize_node = context->master_graph->add_node<ResizeNode>({output}, {resize_output});
+//             resize_node->init(out_width, out_height, resize_scaling_mode, maximum_size, interpolation_type);
+//             output = resize_output;
+//             info = output_info;
+//         }
+//         if (normalized) {
+//             TensorInfo output_info = info;
+//             auto normalized_output = context->master_graph->create_tensor(output_info, false);
+//             auto mirror = static_cast<IntParam*>(rocalCreateIntParameter(0));
+//             std::vector<float> mean = {0, 0, 0};
+//             std::vector<float> std_dev = {255, 255, 255};
+//             std::shared_ptr<CropMirrorNormalizeNode> normalize_node = context->master_graph->add_node<CropMirrorNormalizeNode>({output}, {normalized_output});
+//             normalize_node->init(output_info.max_shape()[1], output_info.max_shape()[0], 0, 0, mean, std_dev, mirror);
+//             output = normalized_output;
+//             info = output_info;
+//         }
+//         if (is_output) {
+//             auto actual_output = context->master_graph->create_tensor(info, is_output);
+//             context->master_graph->add_node<CopyNode>({output}, {actual_output});
+//         }
+// #else
+//         THROW("Video decoder is not enabled since ffmpeg is not present")
+// #endif
+//     } catch (const std::exception& e) {
+//         context->capture_error(e.what());
+//         std::cerr << e.what() << '\n';
+//     }
     return resize_output;
 }
 
-RocalTensor ROCAL_API_CALL
-rocalVideoFileResizeSingleShard(
-    RocalContext p_context,
-    const char* source_path,
-    RocalImageColor rocal_color_format,
-    RocalDecodeDevice rocal_decode_device,
-    unsigned shard_id,
-    unsigned shard_count,
-    unsigned sequence_length,
-    unsigned dest_width,
-    unsigned dest_height,
-    bool shuffle,
-    bool is_output,
-    bool loop,
-    unsigned step,
-    unsigned stride,
-    bool file_list_frame_num,
-    bool pad_sequences,
-    bool normalized,
-    RocalResizeScalingMode scaling_mode,
-    std::vector<unsigned> max_size,
-    unsigned resize_shorter,
-    unsigned resize_longer,
-    RocalResizeInterpolationType interpolation_type) {
-    Tensor* resize_output = nullptr;
-    if (p_context == nullptr) {
-        ERR("Invalid ROCAL context or invalid input image")
-        return resize_output;
-    }
+// RocalTensor ROCAL_API_CALL
+// rocalVideoFileResizeSingleShard(
+//     RocalContext p_context,
+//     const char* source_path,
+//     RocalImageColor rocal_color_format,
+//     RocalDecodeDevice rocal_decode_device,
+//     unsigned shard_id,
+//     unsigned shard_count,
+//     unsigned sequence_length,
+//     unsigned dest_width,
+//     unsigned dest_height,
+//     bool shuffle,
+//     bool is_output,
+//     bool loop,
+//     unsigned step,
+//     unsigned stride,
+//     bool file_list_frame_num,
+//     bool pad_sequences,
+//     bool normalized,
+//     RocalResizeScalingMode scaling_mode,
+//     std::vector<unsigned> max_size,
+//     unsigned resize_shorter,
+//     unsigned resize_longer,
+//     RocalResizeInterpolationType interpolation_type) {
+//     Tensor* resize_output = nullptr;
+//     if (p_context == nullptr) {
+//         ERR("Invalid ROCAL context or invalid input image")
+//         return resize_output;
+//     }
 
-    auto context = static_cast<Context*>(p_context);
-    try {
-#ifdef ROCAL_VIDEO
-        if (sequence_length == 0)
-            THROW("Sequence length passed should be bigger than 0")
+//     auto context = static_cast<Context*>(p_context);
+//     try {
+// #ifdef ROCAL_VIDEO
+//         if (sequence_length == 0)
+//             THROW("Sequence length passed should be bigger than 0")
 
-        if (shard_count < 1)
-            THROW("Shard count should be bigger than 0")
+//         if (shard_count < 1)
+//             THROW("Shard count should be bigger than 0")
 
-        if (shard_id >= shard_count)
-            THROW("Shard id should be smaller than shard count")
+//         if (shard_id >= shard_count)
+//             THROW("Shard id should be smaller than shard count")
 
-        // Set default step and stride values if 0 is passed
-        step = (step == 0) ? sequence_length : step;
-        stride = (stride == 0) ? 1 : stride;
+//         // Set default step and stride values if 0 is passed
+//         step = (step == 0) ? sequence_length : step;
+//         stride = (stride == 0) ? 1 : stride;
 
-        VideoProperties video_prop;
-        DecoderType decoder_type;
-        find_video_properties(video_prop, source_path, file_list_frame_num);
-        if (rocal_decode_device == RocalDecodeDevice::ROCAL_HW_DECODE)
-            decoder_type = DecoderType::FFMPEG_HARDWARE_DECODE;
-        else
-            decoder_type = DecoderType::FFMPEG_SOFTWARE_DECODE;
-        auto [color_format, tensor_layout, dims, num_of_planes] = convert_color_format_sequence(rocal_color_format, context->user_batch_size(),
-                                                                                                video_prop.height, video_prop.width, sequence_length);
-        auto decoder_mode = convert_decoder_mode(rocal_decode_device);
-        auto info = TensorInfo(std::move(dims),
-                               context->master_graph->mem_type(),
-                               RocalTensorDataType::UINT8,
-                               tensor_layout,
-                               color_format);
-        Tensor* output = context->master_graph->create_loader_output_tensor(info);
-        context->master_graph->add_node<VideoLoaderSingleShardNode>({}, {output})->init(shard_id, shard_count, source_path, StorageType::VIDEO_FILE_SYSTEM, decoder_type, decoder_mode, sequence_length, step, stride, video_prop, shuffle, loop, context->user_batch_size(), context->master_graph->mem_type(), pad_sequences);
-        context->master_graph->set_loop(loop);
+//         VideoProperties video_prop;
+//         DecoderType decoder_type;
+//         find_video_properties(video_prop, source_path, file_list_frame_num);
+//         if (rocal_decode_device == RocalDecodeDevice::ROCAL_HW_DECODE)
+//             decoder_type = DecoderType::FFMPEG_HARDWARE_DECODE;
+//         else
+//             decoder_type = DecoderType::FFMPEG_SOFTWARE_DECODE;
+//         auto [color_format, tensor_layout, dims, num_of_planes] = convert_color_format_sequence(rocal_color_format, context->user_batch_size(),
+//                                                                                                 video_prop.height, video_prop.width, sequence_length);
+//         auto decoder_mode = convert_decoder_mode(rocal_decode_device);
+//         auto info = TensorInfo(std::move(dims),
+//                                context->master_graph->mem_type(),
+//                                RocalTensorDataType::UINT8,
+//                                tensor_layout,
+//                                color_format);
+//         Tensor* output = context->master_graph->create_loader_output_tensor(info);
+//         context->master_graph->add_node<VideoLoaderSingleShardNode>({}, {output})->init(shard_id, shard_count, source_path, StorageType::VIDEO_FILE_SYSTEM, decoder_type, decoder_mode, sequence_length, step, stride, video_prop, shuffle, loop, context->user_batch_size(), context->master_graph->mem_type(), pad_sequences);
+//         context->master_graph->set_loop(loop);
 
-        if (dest_width != video_prop.width && dest_height != video_prop.height) {
-            if ((dest_width | dest_height | resize_longer | resize_shorter) == 0)
-                THROW("Atleast one size 'dest_width' or 'dest_height' or 'resize_shorter' or 'resize_longer' must be specified")
-            if ((dest_width | dest_height) && (resize_longer | resize_shorter))
-                THROW("Only one method of specifying size can be used \ndest_width and/or dest_height\nresize_shorter\nresize_longer")
-            if (resize_longer && resize_shorter)
-                THROW("'resize_longer' and 'resize_shorter' cannot be passed together. They are mutually exclusive.")
+//         if (dest_width != video_prop.width && dest_height != video_prop.height) {
+//             if ((dest_width | dest_height | resize_longer | resize_shorter) == 0)
+//                 THROW("Atleast one size 'dest_width' or 'dest_height' or 'resize_shorter' or 'resize_longer' must be specified")
+//             if ((dest_width | dest_height) && (resize_longer | resize_shorter))
+//                 THROW("Only one method of specifying size can be used \ndest_width and/or dest_height\nresize_shorter\nresize_longer")
+//             if (resize_longer && resize_shorter)
+//                 THROW("'resize_longer' and 'resize_shorter' cannot be passed together. They are mutually exclusive.")
 
-            unsigned out_width, out_height;
-            RocalResizeScalingMode resize_scaling_mode;
+//             unsigned out_width, out_height;
+//             RocalResizeScalingMode resize_scaling_mode;
 
-            // Change the scaling mode if resize_shorter or resize_longer is specified
-            if (resize_shorter) {
-                resize_scaling_mode = RocalResizeScalingMode::ROCAL_SCALING_MODE_NOT_SMALLER;
-                out_width = out_height = resize_shorter;
-            } else if (resize_longer) {
-                resize_scaling_mode = RocalResizeScalingMode::ROCAL_SCALING_MODE_NOT_LARGER;
-                out_width = out_height = resize_longer;
-            } else {
-                resize_scaling_mode = scaling_mode;
-                out_width = dest_width;
-                out_height = dest_height;
-            }
+//             // Change the scaling mode if resize_shorter or resize_longer is specified
+//             if (resize_shorter) {
+//                 resize_scaling_mode = RocalResizeScalingMode::ROCAL_SCALING_MODE_NOT_SMALLER;
+//                 out_width = out_height = resize_shorter;
+//             } else if (resize_longer) {
+//                 resize_scaling_mode = RocalResizeScalingMode::ROCAL_SCALING_MODE_NOT_LARGER;
+//                 out_width = out_height = resize_longer;
+//             } else {
+//                 resize_scaling_mode = scaling_mode;
+//                 out_width = dest_width;
+//                 out_height = dest_height;
+//             }
 
-            std::vector<unsigned> maximum_size;
-            if (max_size.size()) {
-                if (max_size.size() == 1) {
-                    maximum_size = {max_size[0], max_size[0]};
-                } else if (max_size.size() == 2) {
-                    maximum_size = {max_size[0], max_size[1]};  // {width, height}
-                } else {
-                    THROW("The length of max_size vector exceeds the image dimension.")
-                }
-            }
+//             std::vector<unsigned> maximum_size;
+//             if (max_size.size()) {
+//                 if (max_size.size() == 1) {
+//                     maximum_size = {max_size[0], max_size[0]};
+//                 } else if (max_size.size() == 2) {
+//                     maximum_size = {max_size[0], max_size[1]};  // {width, height}
+//                 } else {
+//                     THROW("The length of max_size vector exceeds the image dimension.")
+//                 }
+//             }
 
-            // Determine the max width and height to be set to the output info
-            unsigned max_out_width, max_out_height;
-            if (maximum_size.size() && maximum_size[0] != 0 && maximum_size[1] != 0) {
-                // If max_size is passed by the user, the resized images cannot exceed the max size,
-                max_out_width = maximum_size[0];
-                max_out_height = maximum_size[1];
-            } else {
-                // compute the output info width and height wrt the scaling modes and roi passed
-                if (resize_scaling_mode == ROCAL_SCALING_MODE_STRETCH) {
-                    max_out_width = out_width ? out_width : info.max_shape()[0];
-                    max_out_height = out_height ? out_height : info.max_shape()[1];
-                } else if (resize_scaling_mode == ROCAL_SCALING_MODE_NOT_SMALLER) {
-                    max_out_width = (out_width ? out_width : out_height) * MAX_ASPECT_RATIO;
-                    max_out_height = (out_height ? out_height : out_width) * MAX_ASPECT_RATIO;
-                } else {
-                    max_out_width = out_width ? out_width : out_height * MAX_ASPECT_RATIO;
-                    max_out_height = out_height ? out_height : out_width * MAX_ASPECT_RATIO;
-                }
-                if (maximum_size.size() == 2) {
-                    max_out_width = maximum_size[0] ? maximum_size[0] : max_out_width;
-                    max_out_height = maximum_size[1] ? maximum_size[1] : max_out_height;
-                }
-            }
+//             // Determine the max width and height to be set to the output info
+//             unsigned max_out_width, max_out_height;
+//             if (maximum_size.size() && maximum_size[0] != 0 && maximum_size[1] != 0) {
+//                 // If max_size is passed by the user, the resized images cannot exceed the max size,
+//                 max_out_width = maximum_size[0];
+//                 max_out_height = maximum_size[1];
+//             } else {
+//                 // compute the output info width and height wrt the scaling modes and roi passed
+//                 if (resize_scaling_mode == ROCAL_SCALING_MODE_STRETCH) {
+//                     max_out_width = out_width ? out_width : info.max_shape()[0];
+//                     max_out_height = out_height ? out_height : info.max_shape()[1];
+//                 } else if (resize_scaling_mode == ROCAL_SCALING_MODE_NOT_SMALLER) {
+//                     max_out_width = (out_width ? out_width : out_height) * MAX_ASPECT_RATIO;
+//                     max_out_height = (out_height ? out_height : out_width) * MAX_ASPECT_RATIO;
+//                 } else {
+//                     max_out_width = out_width ? out_width : out_height * MAX_ASPECT_RATIO;
+//                     max_out_height = out_height ? out_height : out_width * MAX_ASPECT_RATIO;
+//                 }
+//                 if (maximum_size.size() == 2) {
+//                     max_out_width = maximum_size[0] ? maximum_size[0] : max_out_width;
+//                     max_out_height = maximum_size[1] ? maximum_size[1] : max_out_height;
+//                 }
+//             }
 
-            // set the width and height in the output info
-            // For the resize node, user can create an image with a different width and height
-            TensorInfo output_info = info;
-            std::vector<size_t> out_dims = {context->user_batch_size(), sequence_length, max_out_height,
-                                            max_out_width, static_cast<unsigned>(num_of_planes)};
-            output_info.set_dims(out_dims);
+//             // set the width and height in the output info
+//             // For the resize node, user can create an image with a different width and height
+//             TensorInfo output_info = info;
+//             std::vector<size_t> out_dims = {context->user_batch_size(), sequence_length, max_out_height,
+//                                             max_out_width, static_cast<unsigned>(num_of_planes)};
+//             output_info.set_dims(out_dims);
 
-            resize_output = context->master_graph->create_tensor(output_info, false);
-            // For the nodes that user provides the output size the dimension of all the images after this node will be fixed and equal to that size
-            resize_output->reset_tensor_roi();
+//             resize_output = context->master_graph->create_tensor(output_info, false);
+//             // For the nodes that user provides the output size the dimension of all the images after this node will be fixed and equal to that size
+//             resize_output->reset_tensor_roi();
 
-            std::shared_ptr<ResizeNode> resize_node = context->master_graph->add_node<ResizeNode>({output}, {resize_output});
-            resize_node->init(out_width, out_height, resize_scaling_mode, maximum_size, interpolation_type);
-            output = resize_output;
-            info = output_info;
-        }
-        if (normalized) {
-            TensorInfo output_info = info;
-            auto normalized_output = context->master_graph->create_tensor(output_info, false);
-            auto mirror = static_cast<IntParam*>(rocalCreateIntParameter(0));
-            std::vector<float> mean = {0, 0, 0};
-            std::vector<float> std_dev = {255, 255, 255};
-            std::shared_ptr<CropMirrorNormalizeNode> normalize_node = context->master_graph->add_node<CropMirrorNormalizeNode>({output}, {normalized_output});
-            normalize_node->init(output_info.max_shape()[1], output_info.max_shape()[0], 0, 0, mean, std_dev, mirror);
-            output = normalized_output;
-            info = output_info;
-        }
-        if (is_output) {
-            auto actual_output = context->master_graph->create_tensor(info, is_output);
-            context->master_graph->add_node<CopyNode>({output}, {actual_output});
-        }
-#else
-        THROW("Video decoder is not enabled since ffmpeg is not present")
-#endif
-    } catch (const std::exception& e) {
-        context->capture_error(e.what());
-        std::cerr << e.what() << '\n';
-    }
-    return resize_output;
-}
+//             std::shared_ptr<ResizeNode> resize_node = context->master_graph->add_node<ResizeNode>({output}, {resize_output});
+//             resize_node->init(out_width, out_height, resize_scaling_mode, maximum_size, interpolation_type);
+//             output = resize_output;
+//             info = output_info;
+//         }
+//         if (normalized) {
+//             TensorInfo output_info = info;
+//             auto normalized_output = context->master_graph->create_tensor(output_info, false);
+//             auto mirror = static_cast<IntParam*>(rocalCreateIntParameter(0));
+//             std::vector<float> mean = {0, 0, 0};
+//             std::vector<float> std_dev = {255, 255, 255};
+//             std::shared_ptr<CropMirrorNormalizeNode> normalize_node = context->master_graph->add_node<CropMirrorNormalizeNode>({output}, {normalized_output});
+//             normalize_node->init(output_info.max_shape()[1], output_info.max_shape()[0], 0, 0, mean, std_dev, mirror);
+//             output = normalized_output;
+//             info = output_info;
+//         }
+//         if (is_output) {
+//             auto actual_output = context->master_graph->create_tensor(info, is_output);
+//             context->master_graph->add_node<CopyNode>({output}, {actual_output});
+//         }
+// #else
+//         THROW("Video decoder is not enabled since ffmpeg is not present")
+// #endif
+//     } catch (const std::exception& e) {
+//         context->capture_error(e.what());
+//         std::cerr << e.what() << '\n';
+//     }
+//     return resize_output;
+// }
 
 // loader for CFAR10 raw data: Can be used for other raw data loaders as well
 RocalTensor ROCAL_API_CALL

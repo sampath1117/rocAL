@@ -36,6 +36,7 @@ THE SOFTWARE.
 #include "loader_module.h"
 #include "video_properties.h"
 #include "video_reader.h"
+#include "parameter_random_crop_decoder.h"
 
 #ifdef ROCAL_VIDEO
 extern "C" {
@@ -110,5 +111,6 @@ class VideoReadAndDecode {
     size_t _max_decoded_stride;
     AVPixelFormat _out_pix_fmt;
     DecoderConfig _video_decoder_config;
+    RocalRandomCropDecParam *_random_crop_dec_param = nullptr;
 };
 #endif

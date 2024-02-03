@@ -42,6 +42,7 @@ extern "C" {
 }
 #endif
 #include "parameter_factory.h"
+#include "parameter_random_crop_decoder.h"
 
 #ifdef ROCAL_VIDEO
 class VideoDecoder {
@@ -64,5 +65,7 @@ class VideoDecoder {
     virtual int seek_frame(AVRational avg_frame_rate, AVRational time_base, unsigned frame_number) = 0;
     virtual void release() = 0;
     virtual ~VideoDecoder() = default;
+    virtual void set_crop_window(CropWindow &crop_window) = 0;
+    CropWindow _crop_window;
 };
 #endif

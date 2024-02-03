@@ -44,5 +44,7 @@ class FFmpegVideoDecoder : public VideoDecoder {
     int _video_stream_idx = -1;
     AVPixelFormat _dec_pix_fmt;
     int _codec_width, _codec_height;
+    void set_crop_window(CropWindow &crop_window) override { _crop_window = crop_window; }
+    CropWindow _crop_window;
 };
 #endif
