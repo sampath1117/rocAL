@@ -20,27 +20,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "node_video_loader.h"
+#include "node_fused_crop_resize_video_loader.h"
 
 #include <memory>
 #include <numeric>
 #include <sstream>
 #ifdef ROCAL_VIDEO
 
-VideoLoaderNode::VideoLoaderNode(Tensor *output, void *device_resources) : Node({}, {output}) {
+FusedCropResizeVideoLoaderNode::FusedCropResizeVideoLoaderNode(Tensor *output, void *device_resources) : Node({}, {output}) {
     _loader_module = std::make_shared<VideoLoaderSharded>(device_resources);
 }
 
-void VideoLoaderNode::init(unsigned internal_shard_count, const std::string &source_path, StorageType storage_type, DecoderType decoder_type, DecodeMode decoder_mode,
+void FusedCropResizeVideoLoaderNode::init(unsigned internal_shard_count, const std::string &source_path, StorageType storage_type, DecoderType decoder_type, DecodeMode decoder_mode,
                            unsigned sequence_length, unsigned step, unsigned stride, VideoProperties &video_prop, bool shuffle, bool loop, size_t load_batch_count, RocalMemType mem_type,
-                           bool pad_sequences) {
+                           bool pad_sequences, unsigned num_attempts, std::vector<float> &random_area, std::vector<float> &random_aspect_ratio) {
     _decode_mode = decoder_mode;
     if (!_loader_module)
-        THROW("ERROR: loader module is not set for VideoLoaderNode, cannot initialize")
+        THROW("ERROR: loader module is not set for FusedCropResizeVideoLoaderNode, cannot initialize")
     if (internal_shard_count < 1)
         THROW("Shard count should be greater than or equal to one")
     _loader_module->set_output(_outputs[0]);
-    // Set reader and decoder config accordingly for the VideoLoaderNode
+    // Set reader and decoder config accordingly for the FusedCropResizeVideoLoaderNode
     auto reader_cfg = ReaderConfig(storage_type, source_path, "", std::map<std::string, std::string>(), shuffle, loop);
     reader_cfg.set_shard_count(internal_shard_count);
     reader_cfg.set_batch_count(load_batch_count);
@@ -49,17 +49,24 @@ void VideoLoaderNode::init(unsigned internal_shard_count, const std::string &sou
     reader_cfg.set_frame_stride(stride);
     reader_cfg.set_video_properties(video_prop);
     reader_cfg.set_pad_sequences(pad_sequences);
-    _loader_module->initialize(reader_cfg, DecoderConfig(decoder_type), mem_type, _batch_size);
+    
+    auto decoder_cfg = DecoderConfig(decoder_type);
+    decoder_cfg.set_random_area(random_area);
+    decoder_cfg.set_random_aspect_ratio(random_aspect_ratio);
+    decoder_cfg.set_num_attempts(num_attempts);
+    decoder_cfg.set_seed(ParameterFactory::instance()->get_seed());
+    
+    _loader_module->initialize(reader_cfg, decoder_cfg, mem_type, _batch_size);
     _loader_module->start_loading();
 }
 
-std::shared_ptr<LoaderModule> VideoLoaderNode::get_loader_module() {
+std::shared_ptr<LoaderModule> FusedCropResizeVideoLoaderNode::get_loader_module() {
     if (!_loader_module)
-        WRN("VideoLoaderNode's loader module is null, not initialized")
+        WRN("FusedCropResizeVideoLoaderNode's loader module is null, not initialized")
     return _loader_module;
 }
 
-VideoLoaderNode::~VideoLoaderNode() {
+FusedCropResizeVideoLoaderNode::~FusedCropResizeVideoLoaderNode() {
     _loader_module = nullptr;
 }
 

@@ -184,12 +184,10 @@ def caffe2(path, bbox=False, stick_to_shard=False, pad_last_batch=False):
     else:
         return (caffe2_meta_data, labels)
 
-
 def video(sequence_length, file_list_frame_num=False, file_root="", image_type=types.RGB, num_shards=1,
           random_shuffle=False, step=1, stride=1, decoder_mode=types.SOFTWARE_DECODE, enable_frame_num=False,
           enable_timestamps=False, file_list="", stick_to_shard=False, pad_last_batch=False,
-          file_list_include_preceding_frame=False, normalized=False, skip_vfr_check=False, pad_sequences=False, 
-          resize_width = 0, resize_height = 0, num_attempts = 10, scale = [], ratio = []):
+          file_list_include_preceding_frame=False, normalized=False, skip_vfr_check=False, pad_sequences=False):
     """!Creates a VideoDecoder node for loading video sequences.
 
         @param sequence_length                      Number of frames in video sequence.
@@ -238,17 +236,11 @@ def video(sequence_length, file_list_frame_num=False, file_root="", image_type=t
         "frame_stride": stride,
         "file_list_frame_num": file_list_frame_num,
         "pad_sequences": pad_sequences,
-        "normalized": normalized,
-        "dest_width": resize_width,
-        "dest_height": resize_height,
-        "num_attempts": num_attempts,
-        "crop_scale_range": scale,
-        "aspect_ratio_range": ratio,
+        "normalized": normalized
         }  # VideoDecoder
     videos = b.videoDecoder(
         Pipeline._current_pipeline._handle, *(kwargs_pybind_decoder.values()))
     return (videos)
-
 
 def video_resize(sequence_length, resize_width, resize_height, file_list_frame_num=False,
                  file_root="", image_type=types.RGB,
@@ -308,7 +300,70 @@ def video_resize(sequence_length, resize_width, resize_height, file_list_frame_n
         Pipeline._current_pipeline._handle, *(kwargs_pybind_decoder.values()))
     return (videos, meta_data)
 
+def video_random_crop_resize(sequence_length, file_list_frame_num=False, file_root="", image_type=types.RGB, num_shards=1,
+                             random_shuffle=False, step=1, stride=1, decoder_mode=types.SOFTWARE_DECODE, enable_frame_num=False,
+                             enable_timestamps=False, file_list="", stick_to_shard=False, pad_last_batch=False,
+                             file_list_include_preceding_frame=False, normalized=False, skip_vfr_check=False, pad_sequences=False, 
+                             resize_width = 0, resize_height = 0, num_attempts = 10, scale = [], ratio = []):
+    """!Creates a FusedVideoCropResizeDecoder node for loading video sequences.
 
+        @param sequence_length                      Number of frames in video sequence.
+        @param file_list_frame_num                  Specifies whether file list includes frame numbers.
+        @param file_root                            Root directory containing video files.
+        @param image_type                           Color format of the frames.
+        @param num_shards                           Number of shards for data parallelism.
+        @param random_shuffle                       Specifies if frames should be randomly shuffled.
+        @param step                                 Distance between first frames of consecutive sequences.
+        @param stride                               Distance between consecutive frames in a sequence.
+        @param decoder_mode                         Device used for video decoding.
+        @param enable_frame_num                     Specifies whether frame numbers are enabled.
+        @param enable_timestamps                    Specifies whether timestamps are enabled.
+        @param file_list                            List of video files.
+        @param stick_to_shard                       Determines whether the reader should stick to a data shard instead of going through the entire dataset.
+        @param pad_last_batch                       If set to True, pads the shard by repeating the last sample.
+        @param file_list_include_preceding_frame    Changes the behavior how file_list start and end frame timestamps are translated to a frame number.
+        @param normalized                           Gets the output as normalized data.
+        @param skip_vfr_check                       Skips the check for the variable frame rate (VFR) videos.
+        @param pad_sequences                        Pads the Sequence or not
+
+        @return   list of loaded video sequences.
+    """
+    Pipeline._current_pipeline._reader = "FusedVideoDecoderCropResize"
+    # Output
+    videos = []
+    kwargs_pybind_reader = {
+        "source_path": file_root,
+        "sequence_length": sequence_length,
+        "frame_step": step,
+        "frame_stride": stride,
+        "file_list_frame_num": file_list_frame_num}  # VideoMetaDataReader
+    b.videoMetaDataReader(Pipeline._current_pipeline._handle,
+                          *(kwargs_pybind_reader.values()))
+
+    kwargs_pybind_decoder = {
+        "source_path": file_root,
+        "color_format": image_type,
+        "decoder_mode": decoder_mode,
+        "shard_count": num_shards,
+        "sequence_length": sequence_length,
+        "shuffle": random_shuffle,
+        "is_output": False,
+        "loop": False,
+        "frame_step": step,
+        "frame_stride": stride,
+        "file_list_frame_num": file_list_frame_num,
+        "pad_sequences": pad_sequences,
+        "normalized": normalized,
+        "dest_width": resize_width,
+        "dest_height": resize_height,
+        "num_attempts": num_attempts,
+        "crop_scale_range": scale,
+        "aspect_ratio_range": ratio,
+        }  # FusedVideoDecoderCropResize
+    videos = b.fusedVideoDecoderCropResize(
+        Pipeline._current_pipeline._handle, *(kwargs_pybind_decoder.values()))
+    return (videos)
+    
 def sequence_reader(file_root, sequence_length, image_type=types.RGB, num_shards=1, random_shuffle=False, step=3, stride=1, stick_to_shard=False, pad_last_batch=False):
     """!Creates a SequenceReader node for loading image sequences.
 

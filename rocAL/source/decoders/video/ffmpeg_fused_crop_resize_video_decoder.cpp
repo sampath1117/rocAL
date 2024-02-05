@@ -20,15 +20,44 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "ffmpeg_video_decoder.h"
+#include "ffmpeg_fused_crop_resize_video_decoder.h"
 
 #include <commons.h>
 #include <stdio.h>
+#include "rpp.h"
+#include "rppdefs.h"
+#include "rppi.h"
+
+inline void set_descriptor_dims_and_strides(RpptDescPtr descPtr, int noOfImages, int maxHeight, int maxWidth, int numChannels, int offsetInBytes)
+{
+    descPtr->numDims = 4;
+    descPtr->offsetInBytes = offsetInBytes;
+    descPtr->n = noOfImages;
+    descPtr->h = maxHeight;
+    descPtr->w = maxWidth;
+    descPtr->c = numChannels;
+
+    // set strides
+    if (descPtr->layout == RpptLayout::NHWC)
+    {
+        descPtr->strides.nStride = descPtr->c * descPtr->w * descPtr->h;
+        descPtr->strides.hStride = descPtr->c * descPtr->w;
+        descPtr->strides.wStride = descPtr->c;
+        descPtr->strides.cStride = 1;
+    }
+    else if(descPtr->layout == RpptLayout::NCHW)
+    {
+        descPtr->strides.nStride = descPtr->c * descPtr->w * descPtr->h;
+        descPtr->strides.cStride = descPtr->w * descPtr->h;
+        descPtr->strides.hStride = descPtr->w;
+        descPtr->strides.wStride = 1;
+    }
+}
 
 #ifdef ROCAL_VIDEO
-FFmpegVideoDecoder::FFmpegVideoDecoder(){};
+FFmpegFusedCropResizeVideoDecoder::FFmpegFusedCropResizeVideoDecoder(){};
 
-int FFmpegVideoDecoder::seek_frame(AVRational avg_frame_rate, AVRational time_base, unsigned frame_number) {
+int FFmpegFusedCropResizeVideoDecoder::seek_frame(AVRational avg_frame_rate, AVRational time_base, unsigned frame_number) {
     auto seek_time = av_rescale_q((int64_t)frame_number, av_inv_q(avg_frame_rate), AV_TIME_BASE_Q);
     int64_t select_frame_pts = av_rescale_q((int64_t)frame_number, av_inv_q(avg_frame_rate), time_base);
     int ret = av_seek_frame(_fmt_ctx, -1, seek_time, AVSEEK_FLAG_BACKWARD);
@@ -40,14 +69,20 @@ int FFmpegVideoDecoder::seek_frame(AVRational avg_frame_rate, AVRational time_ba
 }
 
 // Seeks to the frame_number in the video file and decodes each frame in the sequence.
-VideoDecoder::Status FFmpegVideoDecoder::Decode(unsigned char *out_buffer, unsigned seek_frame_number, size_t sequence_length, size_t stride, int out_width, int out_height, int out_stride, AVPixelFormat out_pix_format) {
+VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *out_buffer, unsigned seek_frame_number, size_t sequence_length, size_t stride, int out_width, int out_height, int out_stride, AVPixelFormat out_pix_format) {
     VideoDecoder::Status status = Status::OK;
-
+    // std::cout << "_codec_width, codec_height: " << _codec_width << ", " << _codec_height << std::endl;
+    // std::cout << "out_width, out_height: " << out_width << ", " << out_height << std::endl;
+    // std::cout << "out_stride: " << out_stride << std::endl;
+    
+    // std::cout << "printing crop values"<< std::endl;
+    // std::cout << "x, y, width, height: " <<_crop_window.x << ", "<<_crop_window.y<<", "<<_crop_window.W <<", "<<_crop_window.H<<std::endl;
+    
     // Initialize the SwsContext
     SwsContext *swsctx = nullptr;
     if ((out_width != _codec_width) || (out_height != _codec_height) || (out_pix_format != _dec_pix_fmt)) {
         swsctx = sws_getCachedContext(nullptr, _codec_width, _codec_height, _dec_pix_fmt,
-                                      out_width, out_height, out_pix_format, SWS_BILINEAR, nullptr, nullptr, nullptr);
+                                      _codec_width, _codec_height, out_pix_format, SWS_BILINEAR, nullptr, nullptr, nullptr);
         if (!swsctx) {
             ERR("Fail to get sws_getCachedContext");
             return Status::FAILED;
@@ -64,9 +99,43 @@ VideoDecoder::Status FFmpegVideoDecoder::Decode(unsigned char *out_buffer, unsig
     bool sequence_filled = false;
     uint8_t *dst_data[4] = {0};
     int dst_linesize[4] = {0};
+    Rpp32u channels = 3;
     int image_size = out_height * out_stride * sizeof(unsigned char);
+    int input_image_size = _codec_height * _codec_width * channels * sizeof(unsigned char);
     AVPacket pkt;
     AVFrame *dec_frame = av_frame_alloc();
+    
+    RpptDesc srcDesc, dstDesc;
+    RpptDescPtr srcDescPtr = &srcDesc;
+    RpptDescPtr dstDescPtr = &dstDesc;
+    srcDescPtr->dataType = RpptDataType::U8;
+    dstDescPtr->dataType = RpptDataType::U8;
+    
+    if(channels == 1){
+        srcDescPtr->layout = RpptLayout::NCHW;        
+        dstDescPtr->layout = RpptLayout::NCHW;       
+    } else {
+        srcDescPtr->layout = RpptLayout::NHWC;    
+        dstDescPtr->layout = RpptLayout::NHWC;
+    }
+    
+    RpptInterpolationType interpolationType = RpptInterpolationType::BILINEAR;
+    RpptImagePatch *dstImgSizes = static_cast<RpptImagePatch *>(calloc(1, sizeof(RpptImagePatch)));
+    dstImgSizes->width = out_width;
+    dstImgSizes->height = out_height;
+    
+    // Set ROI tensors types for src/dst
+    RpptROI *roiTensorPtrSrc = static_cast<RpptROI *>(calloc(1, sizeof(RpptROI)));
+    roiTensorPtrSrc[0].xywhROI.xy.x = _crop_window.x;
+    roiTensorPtrSrc[0].xywhROI.xy.y = _crop_window.y;
+    roiTensorPtrSrc[0].xywhROI.roiWidth = _crop_window.W;
+    roiTensorPtrSrc[0].xywhROI.roiHeight = _crop_window.H;
+    RpptRoiType roiTypeSrc = RpptRoiType::XYWH;
+    set_descriptor_dims_and_strides(srcDescPtr, 1, _codec_height, _codec_width, channels, 0);
+    set_descriptor_dims_and_strides(dstDescPtr, 1, out_height, out_width, channels, 0);
+    rppHandle_t handle;
+    rppCreateWithBatchSize(&handle, 1, 1);
+    
     if (!dec_frame) {
         ERR("Could not allocate dec_frame");
         return Status::NO_MEMORY;
@@ -102,11 +171,21 @@ VideoDecoder::Status FFmpegVideoDecoder::Decode(unsigned char *out_buffer, unsig
             if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
             if ((dec_frame->pts < select_frame_pts) || (ret < 0)) continue;
             if (frame_count % stride == 0) {
-                dst_data[0] = out_buffer;
-                dst_linesize[0] = out_stride;
                 if (swsctx)
+                {
+                    std::vector<unsigned char> temp_buffer;
+                    temp_buffer.resize(input_image_size);
+                    dst_data[0] = temp_buffer.data();
+                    dst_linesize[0] = _codec_width * channels;
                     sws_scale(swsctx, dec_frame->data, dec_frame->linesize, 0, dec_frame->height, dst_data, dst_linesize);
+                    std::cout << "coming to swsctx" << std::endl;
+                    void *input = reinterpret_cast<void *>(dst_data[0]);
+                    void *output = reinterpret_cast<void *>(out_buffer);
+                    rppt_resize_host(input, srcDescPtr, output, dstDescPtr, dstImgSizes, interpolationType, roiTensorPtrSrc, roiTypeSrc, handle);
+                    temp_buffer.clear();
+                }
                 else {
+                    std::cout << "coming to else case" << std::endl;
                     // copy from frame to out_buffer
                     memcpy(out_buffer, dec_frame->data[0], dec_frame->linesize[0] * out_height);
                 }
@@ -133,7 +212,7 @@ VideoDecoder::Status FFmpegVideoDecoder::Decode(unsigned char *out_buffer, unsig
 }
 
 // Initialize will open a new decoder and initialize the context
-VideoDecoder::Status FFmpegVideoDecoder::Initialize(const char *src_filename) {
+VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Initialize(const char *src_filename) {
     VideoDecoder::Status status = Status::OK;
     int ret;
     AVDictionary *opts = NULL;
@@ -197,14 +276,14 @@ VideoDecoder::Status FFmpegVideoDecoder::Initialize(const char *src_filename) {
     return status;
 }
 
-void FFmpegVideoDecoder::release() {
+void FFmpegFusedCropResizeVideoDecoder::release() {
     if (_video_dec_ctx)
         avcodec_free_context(&_video_dec_ctx);
     if (_fmt_ctx)
         avformat_close_input(&_fmt_ctx);
 }
 
-FFmpegVideoDecoder::~FFmpegVideoDecoder() {
+FFmpegFusedCropResizeVideoDecoder::~FFmpegFusedCropResizeVideoDecoder() {
     release();
 }
 #endif

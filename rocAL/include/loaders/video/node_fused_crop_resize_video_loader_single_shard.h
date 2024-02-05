@@ -28,20 +28,21 @@ THE SOFTWARE.
 #include "video_loader_sharded.h"
 
 #ifdef ROCAL_VIDEO
-class VideoLoaderNode : public Node {
+class FusedCropResizeVideoLoaderSingleShardNode : public Node {
    public:
-    VideoLoaderNode(Tensor *output, void *device_resources);
-    ~VideoLoaderNode() override;
-    VideoLoaderNode() = delete;
-    ///
-    /// \param internal_shard_count Defines the amount of parallelism user wants for the load and decode process to be handled internally.
+    FusedCropResizeVideoLoaderSingleShardNode(Tensor *output, void *device_resources);
+    ~FusedCropResizeVideoLoaderSingleShardNode() override;
+
+    /// \param user_shard_count shard count from user
+    /// \param  user_shard_id shard id from user
     /// \param source_path Defines the path that includes the video dataset
     /// \param load_batch_count Defines the quantum count of the sequences to be loaded. It's usually equal to the user's batch size.
     /// The loader will repeat sequences if necessary to be able to have sequences in multiples of the load_batch_count,
     /// for example if there are 10 sequences in the dataset and load_batch_count is 3, the loader repeats 2 sequences as if there are 12 sequences available.
-    void init(unsigned internal_shard_count, const std::string &source_path, StorageType storage_type, DecoderType decoder_type, DecodeMode decoder_mode,
+    void init(unsigned shard_id, unsigned shard_count, const std::string &source_path, StorageType storage_type, DecoderType decoder_type, DecodeMode decoder_mode,
               unsigned sequence_length, unsigned step, unsigned stride, VideoProperties &video_prop, bool shuffle, bool loop, size_t load_batch_count, RocalMemType mem_type,
-              bool pad_sequences);
+              bool pad_sequences, unsigned num_attempts, std::vector<float> &random_area, std::vector<float> &random_aspect_ratio);
+
     std::shared_ptr<LoaderModule> get_loader_module();
 
    protected:
@@ -50,6 +51,6 @@ class VideoLoaderNode : public Node {
 
    private:
     DecodeMode _decode_mode = DecodeMode::CPU;
-    std::shared_ptr<VideoLoaderSharded> _loader_module = nullptr;
+    std::shared_ptr<VideoLoader> _loader_module = nullptr;
 };
 #endif

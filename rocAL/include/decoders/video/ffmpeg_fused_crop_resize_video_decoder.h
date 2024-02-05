@@ -25,15 +25,15 @@ THE SOFTWARE.
 #include "video_decoder.h"
 
 #ifdef ROCAL_VIDEO
-class FFmpegVideoDecoder : public VideoDecoder {
+class FFmpegFusedCropResizeVideoDecoder : public VideoDecoder {
    public:
     //! Default constructor
-    FFmpegVideoDecoder();
+    FFmpegFusedCropResizeVideoDecoder();
     VideoDecoder::Status Initialize(const char *src_filename) override;
     VideoDecoder::Status Decode(unsigned char *output_buffer, unsigned seek_frame_number, size_t sequence_length, size_t stride, int out_width, int out_height, int out_stride, AVPixelFormat out_format) override;
     int seek_frame(AVRational avg_frame_rate, AVRational time_base, unsigned frame_number) override;
     void release() override;
-    ~FFmpegVideoDecoder() override;
+    ~FFmpegFusedCropResizeVideoDecoder() override;
 
    private:
     const char *_src_filename = NULL;
@@ -44,6 +44,7 @@ class FFmpegVideoDecoder : public VideoDecoder {
     int _video_stream_idx = -1;
     AVPixelFormat _dec_pix_fmt;
     int _codec_width, _codec_height;
-    void set_crop_window(CropWindow &crop_window) override {}
+    void set_crop_window(CropWindow &crop_window) override { _crop_window = crop_window; }
+    CropWindow _crop_window;
 };
 #endif

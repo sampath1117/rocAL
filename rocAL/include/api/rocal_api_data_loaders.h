@@ -608,12 +608,46 @@ extern "C" RocalTensor ROCAL_API_CALL rocalVideoFileSource(RocalContext context,
                                                            unsigned stride = 0,
                                                            bool file_list_frame_num = true,
                                                            bool pad_sequences = false,
-                                                           bool normalized = false,
-                                                           unsigned dest_width = 0,
-                                                           unsigned dest_height = 0,
-                                                           unsigned num_attempts = 10,
-                                                           std::vector<float> crop_scale_range = {},
-                                                           std::vector<float> aspect_ratio_range = {}
+                                                           bool normalized = false);
+                                                           
+/*!
+ * \brief Creates a video reader and decoder as a source. It allocates the resources and objects required to read and decode mp4 videos stored on the file systems.
+ * \ingroup group_rocal_data_loaders
+ * \param [in] context Rocal context
+ * \param [in] source_path A NULL terminated char string pointing to the location on the disk. source_path can be a video file, folder containing videos or a text file
+ * \param [in] color_format The color format the frames will be decoded to.
+ * \param [in] rocal_decode_device Enables software or hardware decoding. Currently only software decoding is supported.
+ * \param [in] internal_shard_count Defines the parallelism level by internally sharding the input dataset and load/decode using multiple decoder/loader instances.
+ * \param [in] sequence_length: The number of frames in a sequence.
+ * \param [in] shuffle: to shuffle sequences.
+ * \param [in] is_output Determines if the user wants the loaded sequence of frames to be part of the output or not.
+ * \param [in] loop: repeat data loading.
+ * \param [in] step: Frame interval between each sequence.
+ * \param [in] stride: Frame interval between frames in a sequence.
+ * \param [in] file_list_frame_num: Determines if the user wants to read frame number or timestamps if a text file is passed in the source_path.
+ * \param [in] pad_sequences: Allows incomplete sequences with black frames, incase of insufficient frames at the end of the video
+ * \param [in] normalized:  Returns normalized frames
+ * \return Reference to the output tensor
+ */
+extern "C" RocalTensor ROCAL_API_CALL rocalFusedVideoCropResize(RocalContext context,
+                                                                const char* source_path,
+                                                                RocalImageColor color_format,
+                                                                RocalDecodeDevice rocal_decode_device,
+                                                                unsigned internal_shard_count,
+                                                                unsigned sequence_length,
+                                                                bool is_output = false,
+                                                                bool shuffle = false,
+                                                                bool loop = false,
+                                                                unsigned step = 0,
+                                                                unsigned stride = 0,
+                                                                bool file_list_frame_num = true,
+                                                                bool pad_sequences = false,
+                                                                bool normalized = false,
+                                                                unsigned dest_width = 0,
+                                                                unsigned dest_height = 0,
+                                                                unsigned num_attempts = 10,
+                                                                std::vector<float> crop_scale_range = {},
+                                                                std::vector<float> aspect_ratio_range = {}
                                                            );
 
 /*! \brief Creates a video reader and decoder as a source. It allocates the resources and objects required to read and decode mp4 videos stored on the file systems. It accepts external sharding information to load a singe shard only.

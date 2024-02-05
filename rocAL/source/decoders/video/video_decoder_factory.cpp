@@ -22,6 +22,7 @@ THE SOFTWARE.
 #include "video_decoder_factory.h"
 
 #include <ffmpeg_video_decoder.h>
+#include <ffmpeg_fused_crop_resize_video_decoder.h>
 #include <hardware_video_decoder.h>
 #include <video_decoder.h>
 
@@ -34,6 +35,8 @@ std::shared_ptr<VideoDecoder> create_video_decoder(DecoderConfig config) {
             return std::make_shared<FFmpegVideoDecoder>();
         case DecoderType::FFMPEG_HARDWARE_DECODE:
             return std::make_shared<HardWareVideoDecoder>();
+        case DecoderType::FUSED_FFMPEG_SOFTWARE_DECODE:
+            return std::make_shared<FFmpegFusedCropResizeVideoDecoder>();
         default:
             THROW("Unsupported decoder type " + TOSTR(config.type()));
     }

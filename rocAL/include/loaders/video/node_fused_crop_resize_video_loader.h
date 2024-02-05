@@ -28,11 +28,11 @@ THE SOFTWARE.
 #include "video_loader_sharded.h"
 
 #ifdef ROCAL_VIDEO
-class VideoLoaderNode : public Node {
+class FusedCropResizeVideoLoaderNode : public Node {
    public:
-    VideoLoaderNode(Tensor *output, void *device_resources);
-    ~VideoLoaderNode() override;
-    VideoLoaderNode() = delete;
+    FusedCropResizeVideoLoaderNode(Tensor *output, void *device_resources);
+    ~FusedCropResizeVideoLoaderNode() override;
+    FusedCropResizeVideoLoaderNode() = delete;
     ///
     /// \param internal_shard_count Defines the amount of parallelism user wants for the load and decode process to be handled internally.
     /// \param source_path Defines the path that includes the video dataset
@@ -41,7 +41,7 @@ class VideoLoaderNode : public Node {
     /// for example if there are 10 sequences in the dataset and load_batch_count is 3, the loader repeats 2 sequences as if there are 12 sequences available.
     void init(unsigned internal_shard_count, const std::string &source_path, StorageType storage_type, DecoderType decoder_type, DecodeMode decoder_mode,
               unsigned sequence_length, unsigned step, unsigned stride, VideoProperties &video_prop, bool shuffle, bool loop, size_t load_batch_count, RocalMemType mem_type,
-              bool pad_sequences);
+              bool pad_sequences, unsigned num_attempts, std::vector<float> &random_area, std::vector<float> &random_aspect_ratio);
     std::shared_ptr<LoaderModule> get_loader_module();
 
    protected:
@@ -51,5 +51,7 @@ class VideoLoaderNode : public Node {
    private:
     DecodeMode _decode_mode = DecodeMode::CPU;
     std::shared_ptr<VideoLoaderSharded> _loader_module = nullptr;
+    std::vector<float> _random_area, _random_aspect_ratio;
+    unsigned _num_attempts;
 };
 #endif
