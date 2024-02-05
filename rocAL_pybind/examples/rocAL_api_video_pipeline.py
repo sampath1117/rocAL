@@ -151,12 +151,12 @@ def main():
                     tensor_layout=tensor_format, tensor_dtype=tensor_dtype)
     # Use pipeline instance to make calls to reader, decoder & augmentation's
     with pipe:
-        images = fn.readers.video(file_root=video_path, sequence_length=user_sequence_length,
-                                  random_shuffle=False, image_type=types.RGB)
+        # images = fn.readers.video(file_root=video_path, sequence_length=user_sequence_length,
+        #                           random_shuffle=False, image_type=types.RGB)
                                                      
-        # images = fn.readers.video_random_crop_resize(file_root=video_path, sequence_length=user_sequence_length,
-        #                                              random_shuffle=False, image_type=types.RGB, resize_width = 640, resize_height = 480,
-        #                                              scale=(0.08, 1.0), ratio=(3. / 4., 4. / 3.))
+        images = fn.readers.video_random_crop_resize(file_root=video_path, sequence_length=user_sequence_length,
+                                                     random_shuffle=False, image_type=types.RGB, resize_width = 640, resize_height = 480,
+                                                     scale=(0.08, 1.0), ratio=(3. / 4., 4. / 3.))
         # elements_extracted1, elements_extracted = fn.element_extract(images, element_map=[1,2])
         pipe.set_outputs(images)
     # Build the pipeline

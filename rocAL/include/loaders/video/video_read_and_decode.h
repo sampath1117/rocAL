@@ -113,5 +113,6 @@ class VideoReadAndDecode {
     AVPixelFormat _out_pix_fmt;
     DecoderConfig _video_decoder_config;
     RocalRandomCropDecParam *_random_crop_dec_param = nullptr;
+    RppLocalData _rpp_params;
 };
 #endif

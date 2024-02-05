@@ -45,6 +45,22 @@ extern "C" {
 #include "parameter_random_crop_decoder.h"
 
 #ifdef ROCAL_VIDEO
+#include "rpp.h"
+#include "rppdefs.h"
+#include "rppi.h"
+
+struct RppLocalData {
+    RppPtr_t pSrc;
+    RppPtr_t pDst;
+    RpptDescPtr pSrcDesc;
+    RpptDescPtr pDstDesc;
+    RpptInterpolationType interpolationType;
+    RpptROI *roiTensorPtrSrc;
+    RpptImagePatch *dstImgSizes;
+    RpptRoiType roiType;
+    rppHandle_t handle;
+};
+
 class VideoDecoder {
    public:
     enum class Status {
@@ -66,6 +82,7 @@ class VideoDecoder {
     virtual void release() = 0;
     virtual ~VideoDecoder() = default;
     virtual void set_crop_window(CropWindow &crop_window) = 0;
+    virtual void set_rpp_params(RppLocalData rpp_params) = 0;
     CropWindow _crop_window;
 };
 #endif

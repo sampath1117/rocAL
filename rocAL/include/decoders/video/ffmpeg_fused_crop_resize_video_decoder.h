@@ -46,5 +46,7 @@ class FFmpegFusedCropResizeVideoDecoder : public VideoDecoder {
     int _codec_width, _codec_height;
     void set_crop_window(CropWindow &crop_window) override { _crop_window = crop_window; }
     CropWindow _crop_window;
+    RppLocalData _rpp_params;
+    void set_rpp_params(RppLocalData rpp_params) { _rpp_params = rpp_params; }
 };
 #endif

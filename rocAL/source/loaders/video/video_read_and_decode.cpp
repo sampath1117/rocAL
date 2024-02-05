@@ -83,6 +83,18 @@ void VideoReadAndDecode::create(ReaderConfig reader_config, DecoderConfig decode
         AspectRatioRange aspect_ratio_range = std::make_pair((float)random_aspect_ratio[0], (float)random_aspect_ratio[1]);
         AreaRange area_range = std::make_pair((float)random_area[0], (float)random_area[1]);
         _random_crop_dec_param = new RocalRandomCropDecParam(aspect_ratio_range, area_range, (int64_t)decoder_config.get_seed(), decoder_config.get_num_attempts(), _batch_size);
+        
+        _rpp_params.pSrcDesc =  new RpptDesc;
+        _rpp_params.pDstDesc =  new RpptDesc;
+        _rpp_params.pSrcDesc->dataType = RpptDataType::U8;
+        _rpp_params.pDstDesc->dataType = RpptDataType::U8;
+        _rpp_params.pSrcDesc->layout = RpptLayout::NHWC;    
+        _rpp_params.pDstDesc->layout = RpptLayout::NHWC;
+        _rpp_params.roiTensorPtrSrc = new RpptROI;
+        _rpp_params.roiType = RpptRoiType::XYWH;
+        _rpp_params.interpolationType = RpptInterpolationType::BILINEAR;
+        _rpp_params.dstImgSizes = new RpptImagePatch;
+        rppCreateWithBatchSize(&_rpp_params.handle, 1, 1);
     }
     
     // Initialize the ffmpeg context once for the video files.
@@ -134,6 +146,7 @@ void VideoReadAndDecode::decode_sequence(size_t sequence_index) {
     if (_random_crop_dec_param) {
         auto crop_window = _random_crop_dec_param->generate_crop_window(dec_shape, sequence_index);
         _video_decoder[_sequence_video_idx[sequence_index]]->set_crop_window(crop_window);
+        _video_decoder[_sequence_video_idx[sequence_index]]->set_rpp_params(_rpp_params);
     }
     if (_video_decoder[_sequence_video_idx[sequence_index]]->Decode(_decompressed_buff_ptrs[sequence_index], _sequence_start_frame_num[sequence_index], _sequence_length, _stride,
                                                                     _max_decoded_width, _max_decoded_height, _max_decoded_stride, _out_pix_fmt) == VideoDecoder::Status::OK) {

@@ -45,5 +45,6 @@ class FFmpegVideoDecoder : public VideoDecoder {
     AVPixelFormat _dec_pix_fmt;
     int _codec_width, _codec_height;
     void set_crop_window(CropWindow &crop_window) override {}
+    void set_rpp_params(RppLocalData rpp_params) override {}
 };
 #endif

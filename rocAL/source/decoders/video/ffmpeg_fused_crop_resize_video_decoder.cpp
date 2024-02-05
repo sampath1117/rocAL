@@ -105,36 +105,15 @@ VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *ou
     AVPacket pkt;
     AVFrame *dec_frame = av_frame_alloc();
     
-    RpptDesc srcDesc, dstDesc;
-    RpptDescPtr srcDescPtr = &srcDesc;
-    RpptDescPtr dstDescPtr = &dstDesc;
-    srcDescPtr->dataType = RpptDataType::U8;
-    dstDescPtr->dataType = RpptDataType::U8;
-    
-    if(channels == 1){
-        srcDescPtr->layout = RpptLayout::NCHW;        
-        dstDescPtr->layout = RpptLayout::NCHW;       
-    } else {
-        srcDescPtr->layout = RpptLayout::NHWC;    
-        dstDescPtr->layout = RpptLayout::NHWC;
-    }
-    
-    RpptInterpolationType interpolationType = RpptInterpolationType::BILINEAR;
-    RpptImagePatch *dstImgSizes = static_cast<RpptImagePatch *>(calloc(1, sizeof(RpptImagePatch)));
-    dstImgSizes->width = out_width;
-    dstImgSizes->height = out_height;
-    
     // Set ROI tensors types for src/dst
-    RpptROI *roiTensorPtrSrc = static_cast<RpptROI *>(calloc(1, sizeof(RpptROI)));
-    roiTensorPtrSrc[0].xywhROI.xy.x = _crop_window.x;
-    roiTensorPtrSrc[0].xywhROI.xy.y = _crop_window.y;
-    roiTensorPtrSrc[0].xywhROI.roiWidth = _crop_window.W;
-    roiTensorPtrSrc[0].xywhROI.roiHeight = _crop_window.H;
-    RpptRoiType roiTypeSrc = RpptRoiType::XYWH;
-    set_descriptor_dims_and_strides(srcDescPtr, 1, _codec_height, _codec_width, channels, 0);
-    set_descriptor_dims_and_strides(dstDescPtr, 1, out_height, out_width, channels, 0);
-    rppHandle_t handle;
-    rppCreateWithBatchSize(&handle, 1, 1);
+    _rpp_params.dstImgSizes->width = out_width;
+    _rpp_params.dstImgSizes->height = out_height;
+    _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.x = _crop_window.x;
+    _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.y = _crop_window.y;
+    _rpp_params.roiTensorPtrSrc[0].xywhROI.roiWidth = _crop_window.W;
+    _rpp_params.roiTensorPtrSrc[0].xywhROI.roiHeight = _crop_window.H;    
+    set_descriptor_dims_and_strides(_rpp_params.pSrcDesc, 1, _codec_height, _codec_width, channels, 0);
+    set_descriptor_dims_and_strides(_rpp_params.pDstDesc, 1, out_height, out_width, channels, 0);
     
     if (!dec_frame) {
         ERR("Could not allocate dec_frame");
@@ -181,7 +160,7 @@ VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *ou
                     std::cout << "coming to swsctx" << std::endl;
                     void *input = reinterpret_cast<void *>(dst_data[0]);
                     void *output = reinterpret_cast<void *>(out_buffer);
-                    rppt_resize_host(input, srcDescPtr, output, dstDescPtr, dstImgSizes, interpolationType, roiTensorPtrSrc, roiTypeSrc, handle);
+                    rppt_resize_host(input, _rpp_params.pSrcDesc, output, _rpp_params.pDstDesc, _rpp_params.dstImgSizes, _rpp_params.interpolationType, _rpp_params.roiTensorPtrSrc, _rpp_params.roiType, _rpp_params.handle);
                     temp_buffer.clear();
                 }
                 else {
@@ -281,6 +260,10 @@ void FFmpegFusedCropResizeVideoDecoder::release() {
         avcodec_free_context(&_video_dec_ctx);
     if (_fmt_ctx)
         avformat_close_input(&_fmt_ctx);
+    delete _rpp_params.pSrcDesc;
+    delete _rpp_params.pDstDesc;
+    delete _rpp_params.roiTensorPtrSrc;
+    delete _rpp_params.dstImgSizes;
 }
 
 FFmpegFusedCropResizeVideoDecoder::~FFmpegFusedCropResizeVideoDecoder() {
