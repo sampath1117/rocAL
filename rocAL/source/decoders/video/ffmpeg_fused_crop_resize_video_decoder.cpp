@@ -111,8 +111,8 @@ VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *ou
     _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.x = _crop_window.x;
     _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.y = _crop_window.y;
     _rpp_params.roiTensorPtrSrc[0].xywhROI.roiWidth = _crop_window.W;
-    _rpp_params.roiTensorPtrSrc[0].xywhROI.roiHeight = _crop_window.H;    
-    set_descriptor_dims_and_strides(_rpp_params.pSrcDesc, 1, _codec_height, _codec_width, channels, 0);
+    _rpp_params.roiTensorPtrSrc[0].xywhROI.roiHeight = _crop_window.H;  
+    set_descriptor_dims_and_strides(_rpp_params.pSrcDesc, 1, _codec_height, _codec_width, channels, 0);  
     set_descriptor_dims_and_strides(_rpp_params.pDstDesc, 1, out_height, out_width, channels, 0);
     
     if (!dec_frame) {
@@ -157,14 +157,13 @@ VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *ou
                     dst_data[0] = temp_buffer.data();
                     dst_linesize[0] = _codec_width * channels;
                     sws_scale(swsctx, dec_frame->data, dec_frame->linesize, 0, dec_frame->height, dst_data, dst_linesize);
-                    std::cout << "coming to swsctx" << std::endl;
+                    
                     void *input = reinterpret_cast<void *>(dst_data[0]);
                     void *output = reinterpret_cast<void *>(out_buffer);
                     rppt_resize_host(input, _rpp_params.pSrcDesc, output, _rpp_params.pDstDesc, _rpp_params.dstImgSizes, _rpp_params.interpolationType, _rpp_params.roiTensorPtrSrc, _rpp_params.roiType, _rpp_params.handle);
                     temp_buffer.clear();
                 }
                 else {
-                    std::cout << "coming to else case" << std::endl;
                     // copy from frame to out_buffer
                     memcpy(out_buffer, dec_frame->data[0], dec_frame->linesize[0] * out_height);
                 }

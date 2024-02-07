@@ -34,6 +34,8 @@ class FFmpegVideoDecoder : public VideoDecoder {
     int seek_frame(AVRational avg_frame_rate, AVRational time_base, unsigned frame_number) override;
     void release() override;
     ~FFmpegVideoDecoder() override;
+    int get_codec_width() override { return 0; }
+    int get_codec_height() override { return 0; }
 
    private:
     const char *_src_filename = NULL;
@@ -45,6 +47,6 @@ class FFmpegVideoDecoder : public VideoDecoder {
     AVPixelFormat _dec_pix_fmt;
     int _codec_width, _codec_height;
     void set_crop_window(CropWindow &crop_window) override {}
-    void set_rpp_params(RppLocalData rpp_params) override {}
+    void set_rpp_params(RppLocalData *rpp_params) override {}
 };
 #endif

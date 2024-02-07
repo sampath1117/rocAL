@@ -34,6 +34,8 @@ class FFmpegFusedCropResizeVideoDecoder : public VideoDecoder {
     int seek_frame(AVRational avg_frame_rate, AVRational time_base, unsigned frame_number) override;
     void release() override;
     ~FFmpegFusedCropResizeVideoDecoder() override;
+    int get_codec_width() override { return _codec_width; }
+    int get_codec_height() override { return _codec_height; }
 
    private:
     const char *_src_filename = NULL;
@@ -47,6 +49,6 @@ class FFmpegFusedCropResizeVideoDecoder : public VideoDecoder {
     void set_crop_window(CropWindow &crop_window) override { _crop_window = crop_window; }
     CropWindow _crop_window;
     RppLocalData _rpp_params;
-    void set_rpp_params(RppLocalData rpp_params) { _rpp_params = rpp_params; }
+    void set_rpp_params(RppLocalData *rpp_params) override { _rpp_params = std::move(*rpp_params); }
 };
 #endif

@@ -82,7 +82,9 @@ class VideoDecoder {
     virtual void release() = 0;
     virtual ~VideoDecoder() = default;
     virtual void set_crop_window(CropWindow &crop_window) = 0;
-    virtual void set_rpp_params(RppLocalData rpp_params) = 0;
+    virtual void set_rpp_params(RppLocalData *rpp_params) = 0;
+    virtual int get_codec_width() = 0;
+    virtual int get_codec_height() = 0;
     CropWindow _crop_window;
 };
 #endif

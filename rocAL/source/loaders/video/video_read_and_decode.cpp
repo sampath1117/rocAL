@@ -83,18 +83,7 @@ void VideoReadAndDecode::create(ReaderConfig reader_config, DecoderConfig decode
         AspectRatioRange aspect_ratio_range = std::make_pair((float)random_aspect_ratio[0], (float)random_aspect_ratio[1]);
         AreaRange area_range = std::make_pair((float)random_area[0], (float)random_area[1]);
         _random_crop_dec_param = new RocalRandomCropDecParam(aspect_ratio_range, area_range, (int64_t)decoder_config.get_seed(), decoder_config.get_num_attempts(), _batch_size);
-        
-        _rpp_params.pSrcDesc =  new RpptDesc;
-        _rpp_params.pDstDesc =  new RpptDesc;
-        _rpp_params.pSrcDesc->dataType = RpptDataType::U8;
-        _rpp_params.pDstDesc->dataType = RpptDataType::U8;
-        _rpp_params.pSrcDesc->layout = RpptLayout::NHWC;    
-        _rpp_params.pDstDesc->layout = RpptLayout::NHWC;
-        _rpp_params.roiTensorPtrSrc = new RpptROI;
-        _rpp_params.roiType = RpptRoiType::XYWH;
-        _rpp_params.interpolationType = RpptInterpolationType::BILINEAR;
-        _rpp_params.dstImgSizes = new RpptImagePatch;
-        rppCreateWithBatchSize(&_rpp_params.handle, 1, 1);
+        _random_crop_dec_param->generate_random_seeds();
     }
     
     // Initialize the ffmpeg context once for the video files.
@@ -110,6 +99,26 @@ void VideoReadAndDecode::create(ReaderConfig reader_config, DecoderConfig decode
         if (_video_decoder[i]->Initialize(substrings[1].c_str()) != VideoDecoder::Status::OK)
             video_instance._is_decoder_instance = false;
         _video_file_name_map.insert(std::pair<std::string, video_map>(_video_names[i], video_instance));
+        
+        if (_video_decoder_config._type == DecoderType::FUSED_FFMPEG_SOFTWARE_DECODE) {
+            Shape dec_shape = {static_cast<size_t>(_video_decoder[i]->get_codec_height()), 
+                               static_cast<size_t>(_video_decoder[i]->get_codec_width())};
+            auto crop_window = _random_crop_dec_param->generate_crop_window(dec_shape, i);
+            _video_decoder[i]->set_crop_window(crop_window);
+            RppLocalData *rpp_params = new RppLocalData;
+            rpp_params->pSrcDesc =  new RpptDesc;
+            rpp_params->pDstDesc =  new RpptDesc;
+            rpp_params->pSrcDesc->dataType = RpptDataType::U8;
+            rpp_params->pDstDesc->dataType = RpptDataType::U8;
+            rpp_params->pSrcDesc->layout = RpptLayout::NHWC;    
+            rpp_params->pDstDesc->layout = RpptLayout::NHWC;
+            rpp_params->roiTensorPtrSrc = new RpptROI;
+            rpp_params->roiType = RpptRoiType::XYWH;
+            rpp_params->interpolationType = RpptInterpolationType::BILINEAR;
+            rpp_params->dstImgSizes = new RpptImagePatch;
+            rppCreateWithBatchSize(&rpp_params->handle, 1, 1);
+            _video_decoder[i]->set_rpp_params(rpp_params);
+        }
     }
     if (_video_process_count != _video_count) {
         while (i < _video_count) {
@@ -142,12 +151,6 @@ float VideoReadAndDecode::convert_framenum_to_timestamp(size_t frame_number) {
 }
 
 void VideoReadAndDecode::decode_sequence(size_t sequence_index) {
-    Shape dec_shape = {_max_decoded_height, _max_decoded_width};
-    if (_random_crop_dec_param) {
-        auto crop_window = _random_crop_dec_param->generate_crop_window(dec_shape, sequence_index);
-        _video_decoder[_sequence_video_idx[sequence_index]]->set_crop_window(crop_window);
-        _video_decoder[_sequence_video_idx[sequence_index]]->set_rpp_params(_rpp_params);
-    }
     if (_video_decoder[_sequence_video_idx[sequence_index]]->Decode(_decompressed_buff_ptrs[sequence_index], _sequence_start_frame_num[sequence_index], _sequence_length, _stride,
                                                                     _max_decoded_width, _max_decoded_height, _max_decoded_stride, _out_pix_fmt) == VideoDecoder::Status::OK) {
         _actual_decoded_width[sequence_index] = _max_decoded_width;
@@ -200,7 +203,7 @@ VideoReadAndDecode::load(unsigned char *buff,
         _sequence_start_frame_num[i] = sequence_info.start_frame_number;
         _sequence_video_path[i] = sequence_info.video_file_name;
         _decompressed_buff_ptrs[i] = buff + (i * image_size * _sequence_length);
-
+        
         // Check if the video file is already initialized otherwise use an existing decoder instance to initialize the video
         // std::cerr << "\nThe source video is " << _sequence_video_path[i] << " MAP : "<<_video_file_name_map.find(_sequence_video_path[i])->second._video_map_idx << "\tThe start index is : " << _sequence_start_frame_num[i] << "\n";
         std::map<std::string, video_map>::iterator itr = _video_file_name_map.find(_sequence_video_path[i]);
@@ -240,13 +243,11 @@ VideoReadAndDecode::load(unsigned char *buff,
         sequential_decode_sequences.push_back(parallel_decode_sequences.back());
         parallel_decode_sequences.clear();
     }
-    if (_random_crop_dec_param)
-        _random_crop_dec_param->generate_random_seeds();
-
+    
     _file_load_time.end();  // Debug timing
 
     _decode_time.start();  // Debug timing
-
+    
     for (size_t i = 0; i < sequential_decode_sequences.size(); i++)
         decode_sequence(sequential_decode_sequences[i]);
 

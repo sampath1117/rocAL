@@ -90,14 +90,23 @@ void get_video_properties_from_txt_file(VideoProperties &video_props, const char
             if (!(line_ss >> video_file_name >> label))
                 continue;
             open_video_context(video_file_name.c_str(), props);
-            if (max_width == props.width || max_width == 0)
-                max_width = props.width;
+            // if (max_width == props.width || max_width == 0)
+            //     max_width = props.width;
+            // else
+            //     THROW("The given video files are of different resolution\n")
+            // if (max_height == props.height || max_height == 0)
+            //     max_height = props.height;
+            // else
+            //     THROW("The given video files are of different resolution\n")
+            if(props.width != 0)
+                max_width = std::max(max_width, props.width);
             else
-                THROW("The given video files are of different resolution\n")
-            if (max_height == props.height || max_height == 0)
-                max_height = props.height;
+                THROW("Value error! video width is 0. Please check the file\n")
+            
+            if(props.height != 0)
+                max_height = std::max(max_height, props.height);
             else
-                THROW("The given video files are of different resolution\n")
+                THROW("Value error! video height is 0. Please check the file\n")
             if (!file_list_frame_num) {
                 line_ss >> start_time >> end_time;
                 start_frame_number = static_cast<unsigned int>(std::ceil(start_time * (props.avg_frame_rate_num / (double)props.avg_frame_rate_den)));
@@ -178,14 +187,23 @@ void find_video_properties(VideoProperties &video_props, const char *source_path
             filesys::path pathObj(subfolder_path);
             if (filesys::exists(pathObj) && filesys::is_regular_file(pathObj)) {
                 open_video_context(subfolder_path.c_str(), props);
-                if (max_width == props.width || max_width == 0)
-                    max_width = props.width;
+                if(props.width != 0)
+                    max_width = std::max(max_width, props.width);
                 else
-                    THROW("The given video files are of different resolution\n")
-                if (max_height == props.height || max_height == 0)
-                    max_height = props.height;
+                    THROW("Value error! video width is 0. Please check the file\n")
+                
+                if(props.height != 0)
+                    max_height = std::max(max_height, props.height);
                 else
-                    THROW("The given video files are of different resolution\n")
+                    THROW("Value error! video height is 0. Please check the file\n")
+                // if (max_width == props.width || max_width == 0)
+                //     max_width = props.width;
+                // else
+                //     THROW("The given video files are of different resolution\n")
+                // if (max_height == props.height || max_height == 0)
+                //     max_height = props.height;
+                // else
+                //     THROW("The given video files are of different resolution\n")
                 video_props.frames_count.push_back(props.frames_count);
                 float video_frame_rate = std::floor(props.avg_frame_rate_num / props.avg_frame_rate_den);
                 if (video_props.frame_rate != 0 && video_frame_rate != video_props.frame_rate)
@@ -214,14 +232,23 @@ void find_video_properties(VideoProperties &video_props, const char *source_path
                     _full_path = file_path;
 
                     open_video_context(_full_path.c_str(), props);
-                    if (max_width == props.width || max_width == 0)
-                        max_width = props.width;
+                    if(props.width != 0)
+                        max_width = std::max(max_width, props.width);
                     else
-                        THROW("The given video files are of different resolution\n")
-                    if (max_height == props.height || max_height == 0)
-                        max_height = props.height;
+                        THROW("Value error! video width is 0. Please check the file\n")
+                    
+                    if(props.height != 0)
+                        max_height = std::max(max_height, props.height);
                     else
-                        THROW("The given video files are of different resolution\n")
+                        THROW("Value error! video height is 0. Please check the file\n")
+                    // if (max_width == props.width || max_width == 0)
+                    //     max_width = props.width;
+                    // else
+                    //     THROW("The given video files are of different resolution\n")
+                    // if (max_height == props.height || max_height == 0)
+                    //     max_height = props.height;
+                    // else
+                    //     THROW("The given video files are of different resolution\n")
                     video_file_path = std::to_string(video_count) + "#" + _full_path;  // Video index is added to each video file name to identify repeated videos files.
                     video_props.video_file_names.push_back(video_file_path);
                     video_props.frames_count.push_back(props.frames_count);

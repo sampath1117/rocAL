@@ -34,6 +34,8 @@ class HardWareVideoDecoder : public VideoDecoder {
     int seek_frame(AVRational avg_frame_rate, AVRational time_base, unsigned frame_number) override;
     void release() override;
     ~HardWareVideoDecoder() override;
+    int get_codec_width() override { return 0; }
+    int get_codec_height() override { return 0; }
 
    private:
     const char *_src_filename = NULL;
@@ -48,7 +50,7 @@ class HardWareVideoDecoder : public VideoDecoder {
     AVBufferRef *hw_device_ctx = NULL;
     int hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type, AVBufferRef *hw_device_ctx);
     void set_crop_window(CropWindow &crop_window) override { _crop_window = crop_window; }
-    void set_rpp_params(RppLocalData rpp_params) override {}
+    void set_rpp_params(RppLocalData *rpp_params) override {}
     CropWindow _crop_window;
 };
 #endif
