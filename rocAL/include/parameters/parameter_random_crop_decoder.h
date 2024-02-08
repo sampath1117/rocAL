@@ -55,6 +55,7 @@ class RocalRandomCropDecParam {
 
    private:
     CropWindow generate_crop_window_implementation(const Shape& shape);
+    CropWindow generate_corner_crop_window_implementation(const Shape& shape);
     AspectRatioRange _aspect_ratio_range;
     // Aspect ratios are uniformly distributed on logarithmic scale.
     // This provides natural symmetry and smoothness of the distribution.
@@ -64,6 +65,7 @@ class RocalRandomCropDecParam {
     static thread_local std::mt19937 _rand_gen;
     int64_t _seed;
     std::vector<int> _seeds;
+    std::vector<float> _scales;
     int _num_attempts;
     int _batch_size;
 };

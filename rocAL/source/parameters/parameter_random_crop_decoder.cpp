@@ -93,6 +93,43 @@ CropWindow RocalRandomCropDecParam::generate_crop_window_implementation(const Sh
     return crop;
 }
 
+// 1. Takes the shortest dimension
+// 2. Multiplies that dimension with the random scale value selected. This is the corner crop size
+// 3. Get a random corner crop position and generate x, y as per the corner crop position
+CropWindow RocalRandomCropDecParam::generate_corner_crop_window_implementation(const Shape& shape) {
+    assert(shape.size() == 2);
+    CropWindow crop;
+    
+    int H = shape[0], W = shape[1];
+    if (W <= 0 || H <= 0)
+        return crop;
+        
+    int min_dimension = std::min(H, W);
+    float scale = 1.0f; // get the random value here
+    int crop_size = int(min_dimension * scale);
+    crop.H = crop_size;
+    crop.W = crop_size;
+    
+    int crop_position = 0; // get the random position here
+    if (crop_position == 0) { // center
+        crop.y = std::round((H - crop_size) / 2.0f);
+        crop.x = std::round((W - crop_size) / 2.0f);
+    } else if (crop_position == 1) { // top left
+        crop.y = 0;
+        crop.x = 0;
+    } else if (crop_position == 2) { // top right
+        crop.y = 0;
+        crop.x = W - crop_size;
+    } else if (crop_position == 3) { // bottom left
+        crop.y = H - crop_size;
+        crop.x = 0;
+    } else if (crop_position == 4) { // bottom right
+        crop.y = H - crop_size;
+        crop.x = W - crop_size;
+    }
+    return crop;
+}
+
 // seed the rng for the instance and return the random crop window.
 CropWindow RocalRandomCropDecParam::generate_crop_window(const Shape& shape, const int instance) {
     _rand_gen.seed(_seeds[instance]);
