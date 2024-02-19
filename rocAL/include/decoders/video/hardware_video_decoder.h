@@ -51,6 +51,9 @@ class HardWareVideoDecoder : public VideoDecoder {
     int hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type, AVBufferRef *hw_device_ctx);
     void set_crop_window(CropWindow &crop_window) override { _crop_window = crop_window; }
     void set_rpp_params(RppLocalData *rpp_params) override {}
+    void set_crop_type(unsigned crop_type) override {}
+    void set_resize_width(unsigned resize_width) override {}
+    void set_resize_height(unsigned resize_height) override {}
     CropWindow _crop_window;
 };
 #endif

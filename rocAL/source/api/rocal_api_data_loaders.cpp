@@ -1599,7 +1599,7 @@ rocalVideoFileSource(
             std::vector<float> std_dev = {255, 255, 255};
             std::shared_ptr<CropMirrorNormalizeNode> normalize_node = context->master_graph->add_node<CropMirrorNormalizeNode>({output}, {normalized_output});
             normalize_node->init(output_info.max_shape()[1], output_info.max_shape()[0], 0, 0, mean, std_dev, mirror);
-            
+
             if (is_output) {
                 auto actual_output = context->master_graph->create_tensor(output_info, is_output);
                 context->master_graph->add_node<CopyNode>({normalized_output}, {actual_output});
@@ -1687,7 +1687,7 @@ rocalVideoFileSourceSingleShard(
             std::vector<float> std_dev = {255, 255, 255};
             std::shared_ptr<CropMirrorNormalizeNode> normalize_node = context->master_graph->add_node<CropMirrorNormalizeNode>({output}, {normalized_output});
             normalize_node->init(output_info.max_shape()[1], output_info.max_shape()[0], 0, 0, mean, std_dev, mirror);
-            
+
             if (is_output) {
                 auto actual_output = context->master_graph->create_tensor(output_info, is_output);
                 context->master_graph->add_node<CopyNode>({normalized_output}, {actual_output});
@@ -2049,11 +2049,15 @@ rocalFusedVideoCropResize(
     bool file_list_frame_num,
     bool pad_sequences,
     bool normalized,
-    unsigned dest_width,
-    unsigned dest_height,
+    unsigned resize_width,
+    unsigned resize_height,
     unsigned num_attempts,
     std::vector<float> crop_scale_range,
-    std::vector<float> aspect_ratio_range) {
+    std::vector<float> aspect_ratio_range,
+    unsigned crop_type,
+    unsigned resize_shorter,
+    unsigned crop_width,
+    unsigned crop_height) {
     Tensor* output = nullptr;
     if (p_context == nullptr) {
         ERR("Invalid ROCAL context")
@@ -2077,11 +2081,22 @@ rocalFusedVideoCropResize(
             decoder_type = DecoderType::FUSED_FFMPEG_HARDWARE_DECODE;
         else
             decoder_type = DecoderType::FUSED_FFMPEG_SOFTWARE_DECODE;
-        
-        if(dest_height == 0)
-            dest_height = video_prop.height;
-        if(dest_width == 0)
-            dest_width = video_prop.width;
+
+        uint dest_height, dest_width;
+        // center crop case
+        if(crop_type == 2 && (crop_width != 0 && crop_height != 0))
+        {
+            dest_height = crop_height;
+            dest_width = crop_width;
+        }
+        else
+        {
+            if(resize_height == 0)
+                dest_height = video_prop.height;
+            if(resize_width == 0)
+                dest_width = video_prop.width;
+        }
+
         auto [color_format, tensor_layout, dims, num_of_planes] = convert_color_format_sequence(rocal_color_format, context->user_batch_size(),
                                                                                                 dest_height, dest_width, sequence_length);
         auto decoder_mode = convert_decoder_mode(rocal_decode_device);
@@ -2093,8 +2108,11 @@ rocalFusedVideoCropResize(
 
         output = context->master_graph->create_loader_output_tensor(info);
 
-        context->master_graph->add_node<FusedCropResizeVideoLoaderNode>({}, {output})->init(internal_shard_count, source_path, StorageType::VIDEO_FILE_SYSTEM, decoder_type, decoder_mode, sequence_length, step, stride, video_prop, shuffle, loop, context->user_batch_size(), context->master_graph->mem_type(), pad_sequences,
-                                                                            num_attempts, crop_scale_range, aspect_ratio_range);
+        context->master_graph->add_node<FusedCropResizeVideoLoaderNode>({}, {output})->init(internal_shard_count, source_path, StorageType::VIDEO_FILE_SYSTEM, decoder_type, decoder_mode,
+                                                                                            sequence_length, step, stride, video_prop,
+                                                                                            shuffle, loop, context->user_batch_size(), context->master_graph->mem_type(), pad_sequences,
+                                                                                            num_attempts, crop_scale_range, aspect_ratio_range,
+                                                                                            crop_type, resize_shorter, resize_width, resize_height);
         context->master_graph->set_loop(loop);
 
         if (normalized) {
@@ -2105,7 +2123,7 @@ rocalFusedVideoCropResize(
             std::vector<float> std_dev = {255, 255, 255};
             std::shared_ptr<CropMirrorNormalizeNode> normalize_node = context->master_graph->add_node<CropMirrorNormalizeNode>({output}, {normalized_output});
             normalize_node->init(output_info.max_shape()[1], output_info.max_shape()[0], 0, 0, mean, std_dev, mirror);
-            
+
             if (is_output) {
                 auto actual_output = context->master_graph->create_tensor(output_info, is_output);
                 context->master_graph->add_node<CopyNode>({normalized_output}, {actual_output});

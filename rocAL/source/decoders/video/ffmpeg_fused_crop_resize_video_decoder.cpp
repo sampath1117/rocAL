@@ -71,13 +71,7 @@ int FFmpegFusedCropResizeVideoDecoder::seek_frame(AVRational avg_frame_rate, AVR
 // Seeks to the frame_number in the video file and decodes each frame in the sequence.
 VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *out_buffer, unsigned seek_frame_number, size_t sequence_length, size_t stride, int out_width, int out_height, int out_stride, AVPixelFormat out_pix_format) {
     VideoDecoder::Status status = Status::OK;
-    // std::cout << "_codec_width, codec_height: " << _codec_width << ", " << _codec_height << std::endl;
-    // std::cout << "out_width, out_height: " << out_width << ", " << out_height << std::endl;
-    // std::cout << "out_stride: " << out_stride << std::endl;
-    
-    // std::cout << "printing crop values"<< std::endl;
-    // std::cout << "x, y, width, height: " <<_crop_window.x << ", "<<_crop_window.y<<", "<<_crop_window.W <<", "<<_crop_window.H<<std::endl;
-    
+
     // Initialize the SwsContext
     SwsContext *swsctx = nullptr;
     if ((out_width != _codec_width) || (out_height != _codec_height) || (out_pix_format != _dec_pix_fmt)) {
@@ -104,17 +98,26 @@ VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *ou
     int input_image_size = _codec_height * _codec_width * channels * sizeof(unsigned char);
     AVPacket pkt;
     AVFrame *dec_frame = av_frame_alloc();
-    
+
     // Set ROI tensors types for src/dst
-    _rpp_params.dstImgSizes->width = out_width;
-    _rpp_params.dstImgSizes->height = out_height;
-    _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.x = _crop_window.x;
-    _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.y = _crop_window.y;
-    _rpp_params.roiTensorPtrSrc[0].xywhROI.roiWidth = _crop_window.W;
-    _rpp_params.roiTensorPtrSrc[0].xywhROI.roiHeight = _crop_window.H;  
-    set_descriptor_dims_and_strides(_rpp_params.pSrcDesc, 1, _codec_height, _codec_width, channels, 0);  
-    set_descriptor_dims_and_strides(_rpp_params.pDstDesc, 1, out_height, out_width, channels, 0);
-    
+    if(_crop_type == 2) {
+        _rpp_params.dstImgSizes->width = _resize_width;
+        _rpp_params.dstImgSizes->height = _resize_height;
+        _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.x = 0;
+        _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.y = 0;
+        _rpp_params.roiTensorPtrSrc[0].xywhROI.roiWidth = _codec_width;
+        _rpp_params.roiTensorPtrSrc[0].xywhROI.roiHeight = _codec_height;
+    } else {
+        _rpp_params.dstImgSizes->width = out_width;
+        _rpp_params.dstImgSizes->height = out_height;
+        _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.x = _crop_window.x;
+        _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.y = _crop_window.y;
+        _rpp_params.roiTensorPtrSrc[0].xywhROI.roiWidth = _crop_window.W;
+        _rpp_params.roiTensorPtrSrc[0].xywhROI.roiHeight = _crop_window.H;
+    }
+    set_descriptor_dims_and_strides(_rpp_params.pSrcDesc, 1, _codec_height, _codec_width, channels, 0);
+    set_descriptor_dims_and_strides(_rpp_params.pDstDesc, 1, _rpp_params.dstImgSizes->height, _rpp_params.dstImgSizes->width, channels, 0);
+
     if (!dec_frame) {
         ERR("Could not allocate dec_frame");
         return Status::NO_MEMORY;
@@ -157,10 +160,30 @@ VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *ou
                     dst_data[0] = temp_buffer.data();
                     dst_linesize[0] = _codec_width * channels;
                     sws_scale(swsctx, dec_frame->data, dec_frame->linesize, 0, dec_frame->height, dst_data, dst_linesize);
-                    
-                    void *input = reinterpret_cast<void *>(dst_data[0]);
-                    void *output = reinterpret_cast<void *>(out_buffer);
-                    rppt_resize_host(input, _rpp_params.pSrcDesc, output, _rpp_params.pDstDesc, _rpp_params.dstImgSizes, _rpp_params.interpolationType, _rpp_params.roiTensorPtrSrc, _rpp_params.roiType, _rpp_params.handle);
+                    if (_crop_type == 2) {
+                        std::vector<unsigned char> resize_output;
+                        resize_output.resize(_resize_width * _resize_height * channels);
+                        void *input = reinterpret_cast<void *>(temp_buffer.data());
+                        void *temp_output = reinterpret_cast<void *>(resize_output.data());
+                        rppt_resize_host(input, _rpp_params.pSrcDesc, temp_output, _rpp_params.pDstDesc, _rpp_params.dstImgSizes, _rpp_params.interpolationType, _rpp_params.roiTensorPtrSrc, _rpp_params.roiType, _rpp_params.handle);
+
+                        _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.x = std::round((_codec_width - out_width) / 2.0f);
+                        _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.y = std::round((_codec_width - out_height) / 2.0f);
+                        _rpp_params.roiTensorPtrSrc[0].xywhROI.roiWidth = out_width;
+                        _rpp_params.roiTensorPtrSrc[0].xywhROI.roiHeight = out_height;
+
+                        set_descriptor_dims_and_strides(_rpp_params.pSrcDesc, 1, _resize_height, _resize_width, channels, 0);
+                        set_descriptor_dims_and_strides(_rpp_params.pDstDesc, 1, out_height, out_width, channels, 0);
+                        // perform crop on the resized output
+                        void *output = reinterpret_cast<void *>(out_buffer);
+                        rppt_crop_host(temp_output, _rpp_params.pSrcDesc, output, _rpp_params.pDstDesc, _rpp_params.roiTensorPtrSrc, _rpp_params.roiType, _rpp_params.handle);
+                        resize_output.clear();
+                    } else {
+                        void *input = reinterpret_cast<void *>(temp_buffer.data());
+                        void *output = reinterpret_cast<void *>(out_buffer);
+                        rppt_resize_host(input, _rpp_params.pSrcDesc, output, _rpp_params.pDstDesc, _rpp_params.dstImgSizes, _rpp_params.interpolationType, _rpp_params.roiTensorPtrSrc, _rpp_params.roiType, _rpp_params.handle);
+                        temp_buffer.clear();
+                    }
                     temp_buffer.clear();
                 }
                 else {

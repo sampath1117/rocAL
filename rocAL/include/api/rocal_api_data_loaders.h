@@ -609,7 +609,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalVideoFileSource(RocalContext context,
                                                            bool file_list_frame_num = true,
                                                            bool pad_sequences = false,
                                                            bool normalized = false);
-                                                           
+
 /*!
  * \brief Creates a video reader and decoder as a source. It allocates the resources and objects required to read and decode mp4 videos stored on the file systems.
  * \ingroup group_rocal_data_loaders
@@ -643,11 +643,15 @@ extern "C" RocalTensor ROCAL_API_CALL rocalFusedVideoCropResize(RocalContext con
                                                                 bool file_list_frame_num = true,
                                                                 bool pad_sequences = false,
                                                                 bool normalized = false,
-                                                                unsigned dest_width = 0,
-                                                                unsigned dest_height = 0,
+                                                                unsigned resize_width = 0,
+                                                                unsigned resize_height = 0,
                                                                 unsigned num_attempts = 10,
                                                                 std::vector<float> crop_scale_range = {},
-                                                                std::vector<float> aspect_ratio_range = {}
+                                                                std::vector<float> aspect_ratio_range = {},
+                                                                unsigned crop_type = 0,
+                                                                unsigned resize_shorter = 0,
+                                                                unsigned crop_width = 0,
+                                                                unsigned crop_height = 0
                                                            );
 
 /*! \brief Creates a video reader and decoder as a source. It allocates the resources and objects required to read and decode mp4 videos stored on the file systems. It accepts external sharding information to load a singe shard only.

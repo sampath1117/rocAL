@@ -41,7 +41,8 @@ class FusedCropResizeVideoLoaderNode : public Node {
     /// for example if there are 10 sequences in the dataset and load_batch_count is 3, the loader repeats 2 sequences as if there are 12 sequences available.
     void init(unsigned internal_shard_count, const std::string &source_path, StorageType storage_type, DecoderType decoder_type, DecodeMode decoder_mode,
               unsigned sequence_length, unsigned step, unsigned stride, VideoProperties &video_prop, bool shuffle, bool loop, size_t load_batch_count, RocalMemType mem_type,
-              bool pad_sequences, unsigned num_attempts, std::vector<float> &random_area, std::vector<float> &random_aspect_ratio);
+              bool pad_sequences, unsigned num_attempts, std::vector<float> &random_area, std::vector<float> &random_aspect_ratio, unsigned crop_type, unsigned resize_shorter,
+              unsigned resize_width, unsigned resize_height);
     std::shared_ptr<LoaderModule> get_loader_module();
 
    protected:
@@ -53,5 +54,7 @@ class FusedCropResizeVideoLoaderNode : public Node {
     std::shared_ptr<VideoLoaderSharded> _loader_module = nullptr;
     std::vector<float> _random_area, _random_aspect_ratio;
     unsigned _num_attempts;
+    unsigned _crop_type;
+    unsigned _resize_shorter, _resize_width, _resize_height;
 };
 #endif
