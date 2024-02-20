@@ -24,6 +24,7 @@ import amd.rocal.fn as fn
 import amd.rocal.types as types
 import numpy as np
 import cupy as cp
+import os
 from parse_config import parse_args
 
 
@@ -126,7 +127,6 @@ def draw_frames(image, output_list_num, batch_sample_idx, iter_idx, layout,):
     if layout == (types.NFCHW or types.NCHW):
         image = image.transpose([1, 2, 0])
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    import os
     if not os.path.exists("OUTPUT_FOLDER/VIDEO_READER"):
         os.makedirs("OUTPUT_FOLDER/VIDEO_READER")
     image = cv2.UMat(image).get()
@@ -146,6 +146,11 @@ def main():
     random_seed = args.seed
     tensor_format = types.NFHWC if args.NHWC else types.NFCHW
     tensor_dtype = types.FLOAT16 if args.fp16 else types.FLOAT
+
+    if os.path.exists("OUTPUT_FOLDER/VIDEO_READER"):
+        os.system("rm -rf OUTPUT_FOLDER/VIDEO_READER")
+        os.makedirs("OUTPUT_FOLDER/VIDEO_READER")
+
     # Create Pipeline instance
     pipe = Pipeline(batch_size=batch_size, num_threads=num_threads, device_id=0, seed=random_seed, rocal_cpu=rocal_cpu,
                     tensor_layout=tensor_format, tensor_dtype=tensor_dtype)

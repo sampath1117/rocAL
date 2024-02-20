@@ -167,8 +167,8 @@ VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *ou
                         void *temp_output = reinterpret_cast<void *>(resize_output.data());
                         rppt_resize_host(input, _rpp_params.pSrcDesc, temp_output, _rpp_params.pDstDesc, _rpp_params.dstImgSizes, _rpp_params.interpolationType, _rpp_params.roiTensorPtrSrc, _rpp_params.roiType, _rpp_params.handle);
 
-                        _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.x = std::round((_codec_width - out_width) / 2.0f);
-                        _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.y = std::round((_codec_width - out_height) / 2.0f);
+                        _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.x = std::round((_resize_width - out_width) / 2.0f);
+                        _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.y = std::round((_resize_height - out_height) / 2.0f);
                         _rpp_params.roiTensorPtrSrc[0].xywhROI.roiWidth = out_width;
                         _rpp_params.roiTensorPtrSrc[0].xywhROI.roiHeight = out_height;
 
