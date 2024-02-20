@@ -105,16 +105,30 @@ void VideoReadAndDecode::create(ReaderConfig reader_config, DecoderConfig decode
         _video_file_name_map.insert(std::pair<std::string, video_map>(_video_names[i], video_instance));
 
         if (_video_decoder_config._type == DecoderType::FUSED_FFMPEG_SOFTWARE_DECODE) {
+            int decoded_frame_height = _video_decoder[i]->get_codec_height();
+            int decoded_frame_width = _video_decoder[i]->get_codec_width();;
             _video_decoder[i]->set_crop_type(crop_type);
             if (crop_type == 2) {
                 unsigned resize_shorter = decoder_config.get_resize_shorter();
-                unsigned resize_width = decoder_config.get_resize_width();
-                unsigned resize_height = decoder_config.get_resize_height();
-                _video_decoder[i]->set_resize_width(crop_type);
-                _video_decoder[i]->set_resize_height(crop_type);
+                unsigned resize_width, resize_height;
+                if(resize_shorter == 0) {
+                    resize_width = decoder_config.get_resize_width();
+                    resize_height = decoder_config.get_resize_height();
+                } else {
+                    float aspect_ratio = static_cast<float>(decoded_frame_height) / decoded_frame_width;
+                    if(decoded_frame_width < decoded_frame_height) {
+                        resize_width = resize_shorter;
+                        resize_height = aspect_ratio * resize_shorter;
+                    } else {
+                        resize_height = resize_shorter;
+                        resize_width = aspect_ratio * resize_shorter;
+                    }
+                }
+                _video_decoder[i]->set_resize_width(resize_width);
+                _video_decoder[i]->set_resize_height(resize_height);
             } else {
-                Shape dec_shape = {static_cast<size_t>(_video_decoder[i]->get_codec_height()),
-                                   static_cast<size_t>(_video_decoder[i]->get_codec_width())};
+                Shape dec_shape = {static_cast<size_t>(decoded_frame_height),
+                                   static_cast<size_t>(decoded_frame_width)};
                 auto crop_window = _random_crop_dec_param->generate_crop_window(dec_shape, i);
                 _video_decoder[i]->set_crop_window(crop_window);
             }

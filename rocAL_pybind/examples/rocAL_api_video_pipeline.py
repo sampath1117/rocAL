@@ -153,16 +153,16 @@ def main():
     with pipe:
         # images = fn.readers.video(file_root=video_path, sequence_length=user_sequence_length,
         #                           random_shuffle=False, image_type=types.RGB)
-                                                     
+
         images = fn.readers.video_random_crop_resize(file_root=video_path, sequence_length=user_sequence_length,
                                                      random_shuffle=False, image_type=types.RGB, resize_width = 640, resize_height = 480,
-                                                     scale=(0.08, 1.0), ratio=(3. / 4., 4. / 3.))
+                                                     scale=(0.08, 1.0), ratio=(3. / 4., 4. / 3.), crop_type = 2, crop_width = 200, crop_height = 200)
         # elements_extracted1, elements_extracted = fn.element_extract(images, element_map=[1,2])
         pipe.set_outputs(images)
     # Build the pipeline
     pipe.build()
     # Dataloader
-    data_loader = ROCALVideoIterator(pipe, multiplier=pipe._multiplier, tensor_layout= types.NHWC, device="gpu" if rocal_cpu is False else "cpu", 
+    data_loader = ROCALVideoIterator(pipe, multiplier=pipe._multiplier, tensor_layout= types.NHWC, device="gpu" if rocal_cpu is False else "cpu",
                                      offset=pipe._offset, display=display, sequence_length=user_sequence_length)
     import timeit
     start = timeit.default_timer()

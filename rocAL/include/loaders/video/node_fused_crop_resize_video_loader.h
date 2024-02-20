@@ -52,9 +52,5 @@ class FusedCropResizeVideoLoaderNode : public Node {
    private:
     DecodeMode _decode_mode = DecodeMode::CPU;
     std::shared_ptr<VideoLoaderSharded> _loader_module = nullptr;
-    std::vector<float> _random_area, _random_aspect_ratio;
-    unsigned _num_attempts;
-    unsigned _crop_type;
-    unsigned _resize_shorter, _resize_width, _resize_height;
 };
 #endif

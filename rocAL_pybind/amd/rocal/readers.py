@@ -303,8 +303,8 @@ def video_resize(sequence_length, resize_width, resize_height, file_list_frame_n
 def video_random_crop_resize(sequence_length, file_list_frame_num=False, file_root="", image_type=types.RGB, num_shards=1,
                              random_shuffle=False, step=1, stride=1, decoder_mode=types.SOFTWARE_DECODE, enable_frame_num=False,
                              enable_timestamps=False, file_list="", stick_to_shard=False, pad_last_batch=False,
-                             file_list_include_preceding_frame=False, normalized=False, skip_vfr_check=False, pad_sequences=False, 
-                             resize_width = 0, resize_height = 0, num_attempts = 10, scale = [], ratio = []):
+                             file_list_include_preceding_frame=False, normalized=False, skip_vfr_check=False, pad_sequences=False,
+                             resize_width = 0, resize_height = 0, num_attempts = 10, scale = [], ratio = [], crop_type = 0, resize_shorter = 0, crop_width = 0, crop_height = 0):
     """!Creates a FusedVideoCropResizeDecoder node for loading video sequences.
 
         @param sequence_length                      Number of frames in video sequence.
@@ -354,16 +354,20 @@ def video_random_crop_resize(sequence_length, file_list_frame_num=False, file_ro
         "file_list_frame_num": file_list_frame_num,
         "pad_sequences": pad_sequences,
         "normalized": normalized,
-        "dest_width": resize_width,
-        "dest_height": resize_height,
+        "resize_width": resize_width,
+        "resize_height": resize_height,
         "num_attempts": num_attempts,
         "crop_scale_range": scale,
         "aspect_ratio_range": ratio,
+        "crop_type": crop_type,
+        "resize_shorter": resize_shorter,
+        "crop_width": crop_width,
+        "crop_height": crop_height
         }  # FusedVideoDecoderCropResize
     videos = b.fusedVideoDecoderCropResize(
         Pipeline._current_pipeline._handle, *(kwargs_pybind_decoder.values()))
     return (videos)
-    
+
 def sequence_reader(file_root, sequence_length, image_type=types.RGB, num_shards=1, random_shuffle=False, step=3, stride=1, stick_to_shard=False, pad_last_batch=False):
     """!Creates a SequenceReader node for loading image sequences.
 

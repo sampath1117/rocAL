@@ -2091,10 +2091,14 @@ rocalFusedVideoCropResize(
         }
         else
         {
-            if(resize_height == 0)
-                dest_height = video_prop.height;
-            if(resize_width == 0)
-                dest_width = video_prop.width;
+            dest_height = (resize_height == 0) ? video_prop.height : resize_height;
+            dest_width = (resize_width == 0) ? video_prop.width : resize_width;
+        }
+
+        if (crop_type == 2) {
+            if ((resize_width == 0) && (resize_height == 0) && (resize_shorter == 0) && (crop_width == 0) && (crop_height == 0)) {
+                THROW("Atleast one size 'resize_width' or 'resize_width' or 'resize_shorter' or 'crop_width' or 'crop_height' must be specified")
+            }
         }
 
         auto [color_format, tensor_layout, dims, num_of_planes] = convert_color_format_sequence(rocal_color_format, context->user_batch_size(),
