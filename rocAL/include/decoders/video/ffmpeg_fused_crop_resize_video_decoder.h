@@ -48,11 +48,11 @@ class FFmpegFusedCropResizeVideoDecoder : public VideoDecoder {
     int _codec_width, _codec_height;
     CropWindow _crop_window;
     RppLocalData _rpp_params;
-    unsigned _crop_type;
+    CropType _crop_type;
     unsigned _resize_width, _resize_height;
     void set_crop_window(CropWindow &crop_window) override { _crop_window = crop_window; }
     void set_rpp_params(RppLocalData *rpp_params) override { _rpp_params = std::move(*rpp_params); }
-    void set_crop_type(unsigned crop_type) override { _crop_type = crop_type; }
+    void set_crop_type(CropType crop_type) override { _crop_type = crop_type; }
     void set_resize_width(unsigned resize_width) { _resize_width = resize_width; }
     void set_resize_height(unsigned resize_height) { _resize_height = resize_height; }
 };

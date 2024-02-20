@@ -357,6 +357,11 @@ PYBIND11_MODULE(rocal_pybind, m) {
         .value("DECODER_VIDEO_FFMPEG_SW", ROCAL_DECODER_VIDEO_FFMPEG_SW)
         .value("DECODER_VIDEO_FFMPEG_HW", ROCAL_DECODER_VIDEO_FFMPEG_HW)
         .export_values();
+    py::enum_<RocalCropType>(types_m, "RocalCropType", "Rocal Crop Type")
+        .value("RANDOM_CROP", ROCAL_RANDOM_CROP)
+        .value("CORNER_CROP", ROCAL_CORNER_CROP)
+        .value("RESIZE_CENTER_CROP", ROCAL_RESIZE_CENTER_CROP)
+        .export_values();
     // rocal_api_info.h
     m.def("getRemainingImages", &rocalGetRemainingImages);
     m.def("getImageName", &wrapper_image_name);

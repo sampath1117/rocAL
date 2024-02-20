@@ -648,7 +648,7 @@ extern "C" RocalTensor ROCAL_API_CALL rocalFusedVideoCropResize(RocalContext con
                                                                 unsigned num_attempts = 10,
                                                                 std::vector<float> crop_scale_range = {},
                                                                 std::vector<float> aspect_ratio_range = {},
-                                                                unsigned crop_type = 0,
+                                                                RocalCropType rocal_crop_type = ROCAL_RANDOM_CROP,
                                                                 unsigned resize_shorter = 0,
                                                                 unsigned crop_width = 0,
                                                                 unsigned crop_height = 0

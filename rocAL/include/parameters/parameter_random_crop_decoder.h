@@ -26,6 +26,12 @@ THE SOFTWARE.
 
 #include "parameter_factory.h"
 
+enum class CropType {
+    RANDOM_CROP = 0,
+    CORNER_CROP,
+    RESIZE_CENTER_CROP
+};
+
 struct CropWindow {
     unsigned x, y, H, W;
     CropWindow() {
@@ -49,13 +55,18 @@ class RocalRandomCropDecParam {
         AreaRange area_range = {0.08, 1},
         int64_t seed = time(0),
         int num_attempts = 10,
-        int batch_size = 256);
+        int batch_size = 256,
+        CropType crop_type = CropType::RANDOM_CROP);
+    explicit RocalRandomCropDecParam(
+        int64_t seed = time(0),
+        std::vector<float> scales = {0.25f, 0.5f, 0.75f},
+        int batch_size = 256,
+        CropType crop_type = CropType::CORNER_CROP);
     CropWindow generate_crop_window(const Shape& shape, const int instance);
     void generate_random_seeds();
 
    private:
     CropWindow generate_crop_window_implementation(const Shape& shape);
-    CropWindow generate_corner_crop_window_implementation(const Shape& shape);
     AspectRatioRange _aspect_ratio_range;
     // Aspect ratios are uniformly distributed on logarithmic scale.
     // This provides natural symmetry and smoothness of the distribution.
@@ -68,4 +79,5 @@ class RocalRandomCropDecParam {
     std::vector<float> _scales;
     int _num_attempts;
     int _batch_size;
+    CropType _crop_type;
 };

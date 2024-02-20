@@ -132,6 +132,19 @@ auto convert_decoder_mode = [](RocalDecodeDevice decode_mode) {
     }
 };
 
+auto convert_crop_type = [](RocalCropType crop_type) {
+    switch (crop_type) {
+        case ROCAL_RANDOM_CROP:
+            return CropType::RANDOM_CROP;
+        case ROCAL_CORNER_CROP:
+            return CropType::CORNER_CROP;
+        case ROCAL_RESIZE_CENTER_CROP:
+            return CropType::RESIZE_CENTER_CROP;
+        default:
+            THROW("Unsupported crop_type" + TOSTR(crop_type))
+    }
+};
+
 RocalTensor ROCAL_API_CALL
 rocalJpegFileSourceSingleShard(
     RocalContext p_context,
@@ -2054,7 +2067,7 @@ rocalFusedVideoCropResize(
     unsigned num_attempts,
     std::vector<float> crop_scale_range,
     std::vector<float> aspect_ratio_range,
-    unsigned crop_type,
+    RocalCropType rocal_crop_type,
     unsigned resize_shorter,
     unsigned crop_width,
     unsigned crop_height) {
@@ -2063,7 +2076,6 @@ rocalFusedVideoCropResize(
         ERR("Invalid ROCAL context")
         return output;
     }
-    std::cout << "Entering rocalFusedVideoCropResize" << std::endl;
     auto context = static_cast<Context*>(p_context);
     try {
 #ifdef ROCAL_VIDEO
@@ -2084,18 +2096,15 @@ rocalFusedVideoCropResize(
 
         uint dest_height, dest_width;
         // center crop case
-        if(crop_type == 2 && (crop_width != 0 && crop_height != 0))
-        {
+        if(rocal_crop_type == RocalCropType::ROCAL_RESIZE_CENTER_CROP && (crop_width != 0 && crop_height != 0)) {
             dest_height = crop_height;
             dest_width = crop_width;
-        }
-        else
-        {
+        } else {
             dest_height = (resize_height == 0) ? video_prop.height : resize_height;
             dest_width = (resize_width == 0) ? video_prop.width : resize_width;
         }
 
-        if (crop_type == 2) {
+        if (rocal_crop_type == RocalCropType::ROCAL_RESIZE_CENTER_CROP) {
             if ((resize_width == 0) && (resize_height == 0) && (resize_shorter == 0) && (crop_width == 0) && (crop_height == 0)) {
                 THROW("Atleast one size 'resize_width' or 'resize_width' or 'resize_shorter' or 'crop_width' or 'crop_height' must be specified")
             }
@@ -2116,7 +2125,7 @@ rocalFusedVideoCropResize(
                                                                                             sequence_length, step, stride, video_prop,
                                                                                             shuffle, loop, context->user_batch_size(), context->master_graph->mem_type(), pad_sequences,
                                                                                             num_attempts, crop_scale_range, aspect_ratio_range,
-                                                                                            crop_type, resize_shorter, resize_width, resize_height);
+                                                                                            convert_crop_type(rocal_crop_type), resize_shorter, resize_width, resize_height);
         context->master_graph->set_loop(loop);
 
         if (normalized) {

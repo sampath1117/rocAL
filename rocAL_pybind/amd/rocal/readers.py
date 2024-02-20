@@ -300,11 +300,11 @@ def video_resize(sequence_length, resize_width, resize_height, file_list_frame_n
         Pipeline._current_pipeline._handle, *(kwargs_pybind_decoder.values()))
     return (videos, meta_data)
 
-def video_random_crop_resize(sequence_length, file_list_frame_num=False, file_root="", image_type=types.RGB, num_shards=1,
-                             random_shuffle=False, step=1, stride=1, decoder_mode=types.SOFTWARE_DECODE, enable_frame_num=False,
-                             enable_timestamps=False, file_list="", stick_to_shard=False, pad_last_batch=False,
-                             file_list_include_preceding_frame=False, normalized=False, skip_vfr_check=False, pad_sequences=False,
-                             resize_width = 0, resize_height = 0, num_attempts = 10, scale = [], ratio = [], crop_type = 0, resize_shorter = 0, crop_width = 0, crop_height = 0):
+def video_crop_resize(sequence_length, file_list_frame_num=False, file_root="", image_type=types.RGB, num_shards=1,
+                      random_shuffle=False, step=1, stride=1, decoder_mode=types.SOFTWARE_DECODE, enable_frame_num=False,
+                      enable_timestamps=False, file_list="", stick_to_shard=False, pad_last_batch=False,
+                      file_list_include_preceding_frame=False, normalized=False, skip_vfr_check=False, pad_sequences=False,
+                      resize_width = 0, resize_height = 0, num_attempts = 10, scale = [], ratio = [], crop_type = types.RANDOM_CROP, resize_shorter = 0, crop_width = 0, crop_height = 0):
     """!Creates a FusedVideoCropResizeDecoder node for loading video sequences.
 
         @param sequence_length                      Number of frames in video sequence.
@@ -359,7 +359,7 @@ def video_random_crop_resize(sequence_length, file_list_frame_num=False, file_ro
         "num_attempts": num_attempts,
         "crop_scale_range": scale,
         "aspect_ratio_range": ratio,
-        "crop_type": crop_type,
+        "rocal_crop_type": crop_type,
         "resize_shorter": resize_shorter,
         "crop_width": crop_width,
         "crop_height": crop_height

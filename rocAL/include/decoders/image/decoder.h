@@ -50,7 +50,7 @@ class DecoderConfig {
     void set_random_area(std::vector<float> &random_area) { _random_area = std::move(random_area); }
     void set_random_aspect_ratio(std::vector<float> &random_aspect_ratio) { _random_aspect_ratio = std::move(random_aspect_ratio); }
     void set_num_attempts(unsigned num_attempts) { _num_attempts = num_attempts; }
-    void set_crop_type(unsigned crop_type) { _crop_type = crop_type; }
+    void set_crop_type(CropType crop_type) { _crop_type = crop_type; }
     void set_resize_shorter(unsigned resize_shorter) { _resize_shorter = resize_shorter; }
     void set_resize_width(unsigned resize_width) { _resize_width = resize_width; }
     void set_resize_height(unsigned resize_height) { _resize_height = resize_height; }
@@ -59,16 +59,17 @@ class DecoderConfig {
     unsigned get_num_attempts() { return _num_attempts; }
     void set_seed(int seed) { _seed = seed; }
     int get_seed() { return _seed; }
-    unsigned get_crop_type() { return _crop_type; }
+    std::vector<float> get_scales() { return _scales; }
+    CropType get_crop_type() { return _crop_type; }
     unsigned get_resize_width() { return _resize_width; }
     unsigned get_resize_height() { return _resize_height; }
     unsigned get_resize_shorter() { return _resize_shorter; }
 
    private:
-    std::vector<float> _random_area, _random_aspect_ratio;
+    std::vector<float> _random_area, _random_aspect_ratio, _scales;
     unsigned _num_attempts = 10;
     int _seed = std::time(0);  // seed for decoder random crop
-    unsigned _crop_type;
+    CropType _crop_type;
     unsigned _resize_shorter, _resize_width, _resize_height;
 };
 
@@ -87,6 +88,7 @@ class Decoder {
         RGB,
         BGR
     };
+
     //! Decodes the header of the Jpeg compressed data and returns basic info about the compressed image
     /*!
      \param input_buffer  User provided buffer containig the encoded image

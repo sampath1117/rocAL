@@ -79,19 +79,23 @@ void VideoReadAndDecode::create(ReaderConfig reader_config, DecoderConfig decode
 
     if (_video_decoder_config._type == DecoderType::FUSED_FFMPEG_SOFTWARE_DECODE) {
         // incase of resize + center crop
-        if(decoder_config.get_crop_type() != 2) {
+        CropType crop_type = decoder_config.get_crop_type();
+        if(crop_type == CropType::RANDOM_CROP) {
             auto random_aspect_ratio = decoder_config.get_random_aspect_ratio();
             auto random_area = decoder_config.get_random_area();
             AspectRatioRange aspect_ratio_range = std::make_pair((float)random_aspect_ratio[0], (float)random_aspect_ratio[1]);
             AreaRange area_range = std::make_pair((float)random_area[0], (float)random_area[1]);
-            _random_crop_dec_param = new RocalRandomCropDecParam(aspect_ratio_range, area_range, (int64_t)decoder_config.get_seed(), decoder_config.get_num_attempts(), _batch_size);
+            _random_crop_dec_param = new RocalRandomCropDecParam(aspect_ratio_range, area_range, (int64_t)decoder_config.get_seed(), decoder_config.get_num_attempts(), _batch_size, crop_type);
+            _random_crop_dec_param->generate_random_seeds();
+        } else if(crop_type == CropType::CORNER_CROP) {
+            auto scales = decoder_config.get_scales();
+            _random_crop_dec_param = new RocalRandomCropDecParam((int64_t)decoder_config.get_seed(), scales, _batch_size, crop_type);
             _random_crop_dec_param->generate_random_seeds();
         }
     }
 
     // Initialize the ffmpeg context once for the video files.
     size_t i = 0;
-    unsigned crop_type = decoder_config.get_crop_type();
     for (; i < _video_process_count; i++) {
         _video_decoder[i] = create_video_decoder(decoder_config);
         std::vector<std::string> substrings;
@@ -105,10 +109,11 @@ void VideoReadAndDecode::create(ReaderConfig reader_config, DecoderConfig decode
         _video_file_name_map.insert(std::pair<std::string, video_map>(_video_names[i], video_instance));
 
         if (_video_decoder_config._type == DecoderType::FUSED_FFMPEG_SOFTWARE_DECODE) {
+            CropType crop_type = decoder_config.get_crop_type();
             int decoded_frame_height = _video_decoder[i]->get_codec_height();
             int decoded_frame_width = _video_decoder[i]->get_codec_width();;
             _video_decoder[i]->set_crop_type(crop_type);
-            if (crop_type == 2) {
+            if (crop_type == CropType::RESIZE_CENTER_CROP) {
                 unsigned resize_shorter = decoder_config.get_resize_shorter();
                 unsigned resize_width, resize_height;
                 if(resize_shorter == 0) {

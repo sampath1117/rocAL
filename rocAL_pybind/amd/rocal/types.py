@@ -89,6 +89,11 @@ from rocal_pybind.types import LANCZOS_INTERPOLATION
 from rocal_pybind.types import GAUSSIAN_INTERPOLATION
 from rocal_pybind.types import TRIANGULAR_INTERPOLATION
 
+#     RocalCropType
+from rocal_pybind.types import RANDOM_CROP
+from rocal_pybind.types import CORNER_CROP
+from rocal_pybind.types import RESIZE_CENTER_CROP
+
 _known_types = {
 
     OK: ("OK", OK),
@@ -144,6 +149,9 @@ _known_types = {
     SCALING_MODE_NOT_LARGER: ("SCALING_MODE_NOT_LARGER", SCALING_MODE_NOT_LARGER),
     SCALING_MODE_MIN_MAX: ("SCALING_MODE_MIN_MAX", SCALING_MODE_MIN_MAX),
 
+    RANDOM_CROP: ("RANDOM_CROP", RANDOM_CROP),
+    CORNER_CROP: ("CORNER_CROP", CORNER_CROP),
+    RESIZE_CENTER_CROP: ("RESIZE_CENTER_CROP", RESIZE_CENTER_CROP)
 }
 
 

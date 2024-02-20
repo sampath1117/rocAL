@@ -351,4 +351,19 @@ enum class RocalROICordsType {
     ROCAL_XYWH = 1
 };
 
+/*! \brief Tensor Crop type
+ * \ingroup group_rocal_types
+ */
+enum RocalCropType {
+    /*! \brief AMD ROCAL_RANDOM_CROP
+     */
+    ROCAL_RANDOM_CROP = 0,
+    /*! \brief AMD ROCAL_CORNER_CROP
+     */
+    ROCAL_CORNER_CROP = 1,
+    /*! \brief AMD ROCAL_RESIZE_CENTER_CROP
+     */
+    ROCAL_RESIZE_CENTER_CROP = 2
+};
+
 #endif  // MIVISIONX_ROCAL_API_TYPES_H

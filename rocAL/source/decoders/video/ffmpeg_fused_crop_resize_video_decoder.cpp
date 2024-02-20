@@ -100,7 +100,7 @@ VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *ou
     AVFrame *dec_frame = av_frame_alloc();
 
     // Set ROI tensors types for src/dst
-    if(_crop_type == 2) {
+    if(_crop_type == CropType::RESIZE_CENTER_CROP) {
         _rpp_params.dstImgSizes->width = _resize_width;
         _rpp_params.dstImgSizes->height = _resize_height;
         _rpp_params.roiTensorPtrSrc[0].xywhROI.xy.x = 0;
@@ -160,7 +160,7 @@ VideoDecoder::Status FFmpegFusedCropResizeVideoDecoder::Decode(unsigned char *ou
                     dst_data[0] = temp_buffer.data();
                     dst_linesize[0] = _codec_width * channels;
                     sws_scale(swsctx, dec_frame->data, dec_frame->linesize, 0, dec_frame->height, dst_data, dst_linesize);
-                    if (_crop_type == 2) {
+                    if (_crop_type == CropType::RESIZE_CENTER_CROP) {
                         std::vector<unsigned char> resize_output;
                         resize_output.resize(_resize_width * _resize_height * channels);
                         void *input = reinterpret_cast<void *>(temp_buffer.data());

@@ -24,10 +24,11 @@ THE SOFTWARE.
 #include <VX/vx_types.h>
 
 #include "parameter_factory.h"
-enum class RocalCropType {
-    ROCALCROP = 0,
-    RANDOMCROP,
-};
+// enum class RocalCropType {
+//     ROCAL_RANDOM_CROP = 0,
+//     ROCAL_CORNER_CROP = 1,
+//     ROCAL_RESIZE_CENTER_CROP = 2
+// };
 
 class CropParam {
     // +-----------------------------------------> X direction
