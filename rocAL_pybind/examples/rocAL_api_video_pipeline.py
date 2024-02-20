@@ -154,9 +154,20 @@ def main():
         # images = fn.readers.video(file_root=video_path, sequence_length=user_sequence_length,
         #                           random_shuffle=False, image_type=types.RGB)
 
+        # fused random crop resize
+        # images = fn.readers.video_crop_resize(file_root=video_path, sequence_length=user_sequence_length,
+        #                                       random_shuffle=False, image_type=types.RGB, resize_width = 640, resize_height = 480,
+        #                                       area_range=(0.08, 1.0), aspect_ratio_range=(3. / 4., 4. / 3.), crop_type = types.RANDOM_CROP)
+
+        # fused random corner crop resize
+        # images = fn.readers.video_crop_resize(file_root=video_path, sequence_length=user_sequence_length,
+        #                                       random_shuffle=False, image_type=types.RGB, resize_width = 640, resize_height = 480,
+        #                                       scales=(0.08, 1.0), crop_type = types.CORNER_CROP)
+
+        # fused resize center crop
         images = fn.readers.video_crop_resize(file_root=video_path, sequence_length=user_sequence_length,
                                               random_shuffle=False, image_type=types.RGB, resize_width = 640, resize_height = 480,
-                                              scale=(0.08, 1.0), ratio=(3. / 4., 4. / 3.), crop_type = types.RESIZE_CENTER_CROP, crop_width = 200, crop_height = 200)
+                                              crop_type = types.RESIZE_CENTER_CROP, crop_width = 200, crop_height = 200)
         # elements_extracted1, elements_extracted = fn.element_extract(images, element_map=[1,2])
         pipe.set_outputs(images)
     # Build the pipeline

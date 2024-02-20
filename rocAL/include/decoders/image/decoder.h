@@ -50,6 +50,7 @@ class DecoderConfig {
     void set_random_area(std::vector<float> &random_area) { _random_area = std::move(random_area); }
     void set_random_aspect_ratio(std::vector<float> &random_aspect_ratio) { _random_aspect_ratio = std::move(random_aspect_ratio); }
     void set_num_attempts(unsigned num_attempts) { _num_attempts = num_attempts; }
+    void set_scales(std::vector<float> &scales) { _scales = std::move(scales); }
     void set_crop_type(CropType crop_type) { _crop_type = crop_type; }
     void set_resize_shorter(unsigned resize_shorter) { _resize_shorter = resize_shorter; }
     void set_resize_width(unsigned resize_width) { _resize_width = resize_width; }

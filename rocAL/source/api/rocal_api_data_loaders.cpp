@@ -2065,8 +2065,9 @@ rocalFusedVideoCropResize(
     unsigned resize_width,
     unsigned resize_height,
     unsigned num_attempts,
-    std::vector<float> crop_scale_range,
+    std::vector<float> area_range,
     std::vector<float> aspect_ratio_range,
+    std::vector<float> scales,
     RocalCropType rocal_crop_type,
     unsigned resize_shorter,
     unsigned crop_width,
@@ -2124,7 +2125,7 @@ rocalFusedVideoCropResize(
         context->master_graph->add_node<FusedCropResizeVideoLoaderNode>({}, {output})->init(internal_shard_count, source_path, StorageType::VIDEO_FILE_SYSTEM, decoder_type, decoder_mode,
                                                                                             sequence_length, step, stride, video_prop,
                                                                                             shuffle, loop, context->user_batch_size(), context->master_graph->mem_type(), pad_sequences,
-                                                                                            num_attempts, crop_scale_range, aspect_ratio_range,
+                                                                                            num_attempts, area_range, aspect_ratio_range, scales,
                                                                                             convert_crop_type(rocal_crop_type), resize_shorter, resize_width, resize_height);
         context->master_graph->set_loop(loop);
 

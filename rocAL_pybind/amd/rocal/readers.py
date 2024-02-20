@@ -304,7 +304,8 @@ def video_crop_resize(sequence_length, file_list_frame_num=False, file_root="", 
                       random_shuffle=False, step=1, stride=1, decoder_mode=types.SOFTWARE_DECODE, enable_frame_num=False,
                       enable_timestamps=False, file_list="", stick_to_shard=False, pad_last_batch=False,
                       file_list_include_preceding_frame=False, normalized=False, skip_vfr_check=False, pad_sequences=False,
-                      resize_width = 0, resize_height = 0, num_attempts = 10, scale = [], ratio = [], crop_type = types.RANDOM_CROP, resize_shorter = 0, crop_width = 0, crop_height = 0):
+                      crop_type = types.RANDOM_CROP, resize_width = 0, resize_height = 0, num_attempts = 10, area_range = [],
+                      aspect_ratio_range = [], scales = [], resize_shorter = 0, crop_width = 0, crop_height = 0):
     """!Creates a FusedVideoCropResizeDecoder node for loading video sequences.
 
         @param sequence_length                      Number of frames in video sequence.
@@ -357,8 +358,9 @@ def video_crop_resize(sequence_length, file_list_frame_num=False, file_root="", 
         "resize_width": resize_width,
         "resize_height": resize_height,
         "num_attempts": num_attempts,
-        "crop_scale_range": scale,
-        "aspect_ratio_range": ratio,
+        "area_range": area_range,
+        "aspect_ratio_range": aspect_ratio_range,
+        "scales": scales,
         "rocal_crop_type": crop_type,
         "resize_shorter": resize_shorter,
         "crop_width": crop_width,

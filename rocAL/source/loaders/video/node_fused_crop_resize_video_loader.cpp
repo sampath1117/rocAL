@@ -33,7 +33,7 @@ FusedCropResizeVideoLoaderNode::FusedCropResizeVideoLoaderNode(Tensor *output, v
 
 void FusedCropResizeVideoLoaderNode::init(unsigned internal_shard_count, const std::string &source_path, StorageType storage_type, DecoderType decoder_type, DecodeMode decoder_mode,
                            unsigned sequence_length, unsigned step, unsigned stride, VideoProperties &video_prop, bool shuffle, bool loop, size_t load_batch_count, RocalMemType mem_type,
-                           bool pad_sequences, unsigned num_attempts, std::vector<float> &random_area, std::vector<float> &random_aspect_ratio,
+                           bool pad_sequences, unsigned num_attempts, std::vector<float> &random_area, std::vector<float> &random_aspect_ratio, std::vector<float> &scales,
                            CropType crop_type, unsigned resize_shorter, unsigned resize_width, unsigned resize_height) {
     _decode_mode = decoder_mode;
     if (!_loader_module)
@@ -56,6 +56,7 @@ void FusedCropResizeVideoLoaderNode::init(unsigned internal_shard_count, const s
     decoder_cfg.set_random_aspect_ratio(random_aspect_ratio);
     decoder_cfg.set_num_attempts(num_attempts);
     decoder_cfg.set_seed(ParameterFactory::instance()->get_seed());
+    decoder_cfg.set_scales(scales);
     decoder_cfg.set_crop_type(crop_type);
     decoder_cfg.set_resize_shorter(resize_shorter);
     decoder_cfg.set_resize_width(resize_width);
